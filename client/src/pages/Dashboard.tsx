@@ -9,6 +9,9 @@ import { useUsers } from "@/hooks/use-users";
 import { useAuth } from "@/hooks/use-auth";
 import type { Employee } from "@shared/schema";
 
+// جميع الأوضاع المعرّفة في النظام
+const ALL_STATUSES = ['على رأس عمله', 'إجازة بلا أجر', 'نقل', 'استقالة'];
+
 const STATUS_COLORS: Record<string, string> = {
   'على رأس عمله': '#22c55e',
   'إجازة بلا أجر': '#f97316',
@@ -29,7 +32,7 @@ export default function Dashboard() {
   const { data: allEmployees = [], isLoading: empLoading } = useQuery<Employee[]>({
     queryKey: ['/api/employees', { all: true }],
     queryFn: async () => {
-      const res = await fetch('/api/employees?all=true');
+      const res = await fetch('/api/employees?all=true', { credentials: 'include' });
       if (!res.ok) throw new Error("Failed to fetch employees");
       return res.json();
     },
@@ -51,16 +54,32 @@ export default function Dashboard() {
   const categoryThird = allEmployees.filter(e => e.category === "ثالثة").length;
   const categoryFourth = allEmployees.filter(e => e.category === "رابعة").length;
 
-  // Status distribution for all employees
+  // حساب توزع جميع الأوضاع
   const statusCounts = allEmployees.reduce((acc, emp) => {
     const status = emp.currentStatus || 'غير محدد';
     acc[status] = (acc[status] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
-  const chartData = Object.entries(statusCounts).map(([name, value]) => ({ name, value }));
+  // إضافة جميع الأوضاع المعرّفة حتى لو كانت صفراً
+  for (const status of ALL_STATUSES) {
+    if (!(status in statusCounts)) {
+      statusCounts[status] = 0;
+    }
+  }
 
-  // Gender distribution
+  // ترتيب الأوضاع: المعرّفة أولاً بالترتيب، ثم أي أوضاع إضافية
+  const orderedStatuses = [
+    ...ALL_STATUSES,
+    ...Object.keys(statusCounts).filter(s => !ALL_STATUSES.includes(s)),
+  ];
+
+  // بيانات المخطط الدائري - فقط الأوضاع التي لها موظفون
+  const chartData = orderedStatuses
+    .filter(status => statusCounts[status] > 0)
+    .map(status => ({ name: status, value: statusCounts[status] }));
+
+  // توزع الجنس
   const maleCount = allEmployees.filter(e => e.gender === 'ذكر').length;
   const femaleCount = allEmployees.filter(e => e.gender === 'أنثى').length;
   const genderData = [
@@ -78,7 +97,7 @@ export default function Dashboard() {
           <p className="mt-1 text-muted-foreground font-medium">نظرة شاملة على إحصائيات الموظفين والوضع الوظيفي</p>
         </div>
 
-        {/* Main Stats */}
+        {/* إحصائيات رئيسية */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           <StatsCard
             title="إجمالي الموظفين"
@@ -117,50 +136,57 @@ export default function Dashboard() {
           />
         </div>
 
-        {/* Status Summary Cards */}
+        {/* توزع الموظفين حسب الوضع الحالي - جميع الأوضاع */}
         <div>
-          <h2 className="text-lg font-bold text-foreground mb-4">توزع الموظفين حسب الوضع الحالي</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-foreground">توزع الموظفين حسب الوضع الحالي</h2>
+            <span className="text-sm text-muted-foreground">
+              إجمالي: <span className="font-bold text-foreground">{totalEmployees}</span> موظف
+            </span>
+          </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {Object.entries(statusCounts).length === 0 ? (
-              <div className="col-span-4 text-center text-muted-foreground py-6">لا توجد بيانات</div>
-            ) : (
-              Object.entries(statusCounts).map(([status, count]) => {
-                const Icon = STATUS_ICONS[status] || UserCheck;
-                const color = STATUS_COLORS[status] || '#8b5cf6';
-                const pct = totalEmployees > 0 ? Math.round((count / totalEmployees) * 100) : 0;
-                return (
-                  <Card key={status} className="border-border/50 shadow-sm hover:shadow-md transition-shadow">
-                    <CardContent className="pt-5 pb-4">
-                      <div className="flex items-start justify-between mb-3">
+            {orderedStatuses.map((status) => {
+              const count = statusCounts[status] || 0;
+              const Icon = STATUS_ICONS[status] || UserCheck;
+              const color = STATUS_COLORS[status] || '#8b5cf6';
+              const pct = totalEmployees > 0 ? Math.round((count / totalEmployees) * 100) : 0;
+              return (
+                <Card
+                  key={status}
+                  className={`border-border/50 shadow-sm hover:shadow-md transition-shadow ${count === 0 ? 'opacity-60' : ''}`}
+                >
+                  <CardContent className="pt-5 pb-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div
+                        className="p-2 rounded-lg"
+                        style={{ backgroundColor: `${color}20`, color }}
+                      >
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <span className="text-3xl font-black" style={{ color }}>{count}</span>
+                    </div>
+                    <p className="font-bold text-sm text-foreground">{status}</p>
+                    <div className="mt-2">
+                      <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
                         <div
-                          className="p-2 rounded-lg"
-                          style={{ backgroundColor: `${color}20`, color }}
-                        >
-                          <Icon className="h-5 w-5" />
-                        </div>
-                        <span className="text-3xl font-black" style={{ color }}>{count}</span>
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{ width: `${pct}%`, backgroundColor: color }}
+                        />
                       </div>
-                      <p className="font-bold text-sm text-foreground">{status}</p>
-                      <div className="mt-2">
-                        <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                          <div
-                            className="h-full rounded-full transition-all"
-                            style={{ width: `${pct}%`, backgroundColor: color }}
-                          />
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">{pct}% من الإجمالي</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })
-            )}
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {count === 0 ? 'لا يوجد موظفون' : `${pct}% من الإجمالي`}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </div>
 
-        {/* Charts Row */}
+        {/* الرسوم البيانية */}
         <div className="grid gap-6 lg:grid-cols-3">
-          {/* Status Pie Chart */}
+          {/* مخطط دائري للأوضاع */}
           <Card className="lg:col-span-2 shadow-lg border-border/50">
             <CardHeader>
               <CardTitle className="text-lg font-bold">الرسم البياني لتوزع الأوضاع</CardTitle>
@@ -196,15 +222,17 @@ export default function Dashboard() {
                     </PieChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="flex h-full items-center justify-center text-muted-foreground">لا توجد بيانات كافية</div>
+                  <div className="flex flex-col h-full items-center justify-center text-muted-foreground gap-2">
+                    <Users className="h-10 w-10 opacity-20" />
+                    <p>لا يوجد موظفون مسجلون بعد</p>
+                  </div>
                 )}
               </div>
             </CardContent>
           </Card>
 
-          {/* Gender + Active Users sidebar */}
+          {/* توزع الجنس والمستخدمون النشطون */}
           <div className="space-y-6">
-            {/* Gender Distribution */}
             <Card className="shadow-lg border-border/50">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base font-bold">توزع الجنس</CardTitle>
@@ -247,7 +275,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Recent Employees */}
+        {/* آخر الموظفين */}
         <Card className="shadow-lg border-border/50">
           <CardHeader>
             <CardTitle className="text-lg font-bold">آخر الموظفين المضافين</CardTitle>
@@ -255,7 +283,7 @@ export default function Dashboard() {
           <CardContent>
             <div className="divide-y divide-border">
               {recentEmployees.length === 0 ? (
-                <p className="text-center text-muted-foreground py-6">لا يوجد موظفين</p>
+                <p className="text-center text-muted-foreground py-6">لا يوجد موظفون مسجلون بعد</p>
               ) : (
                 recentEmployees.map(emp => {
                   const statusColor = STATUS_COLORS[emp.currentStatus] || '#8b5cf6';

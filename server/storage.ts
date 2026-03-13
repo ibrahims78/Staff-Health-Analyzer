@@ -13,7 +13,7 @@ export interface IStorage {
   deleteUser(id: string): Promise<void>;
 
   // Employees
-  getEmployees(includeArchived?: boolean, page?: number, limit?: number): Promise<Employee[]>;
+  getEmployees(includeArchived?: boolean, page?: number, limit?: number, all?: boolean): Promise<Employee[]>;
   getEmployee(id: number): Promise<Employee | undefined>;
   createEmployee(employee: InsertEmployee): Promise<Employee>;
   updateEmployee(id: number, updates: Partial<InsertEmployee>): Promise<Employee>;

@@ -394,7 +394,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       userId: req.user.id,
       action: "DELETE_ATTACHMENT",
       entityType: "EMPLOYEE",
-      entityId: employeeId,
+      entityId: String(employeeId),
       oldValues: { path: filePath },
       newValues: { remaining: newPaths.length }
     });
@@ -753,7 +753,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const filename = `backup_${timestamp}.json`;
       const backupPath = path.join(backupDir, filename);
       
-      const employeesRaw = await storage.getEmployees(true, 1, 10000);
+      const employeesRaw = await storage.getEmployees(false, 1, 10000, true);
       const usersData = await storage.getUsers();
       const auditDataRaw = await storage.getAuditLogs();
 
