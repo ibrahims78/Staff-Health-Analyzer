@@ -96,3 +96,16 @@ The project follows a monorepo pattern with three main directories:
 - **@replit/vite-plugin-runtime-error-modal** — Error overlay in development
 - **@replit/vite-plugin-cartographer** — Development tooling (dev only)
 - **@replit/vite-plugin-dev-banner** — Development banner (dev only)
+
+## Recent Fixes (March 2026)
+
+### TypeScript Errors Fixed (0 errors now)
+1. **`AuditLogs.tsx`** — Fixed `unknown` type being passed to JSX by converting to boolean (`!!log.oldValues || !!log.newValues`)
+2. **`use-users.tsx`** — Fixed `id` type from `number` to `string` for UUID user IDs in both `updateMutation` and `deleteMutation`
+3. **`storage.ts`** — Added `as any` cast to `db.insert(employees).values(employee as any)` to resolve optional field type mismatch with Drizzle's strict types
+4. **`Sidebar.tsx`** — Removed nested `<a>` inside `<Link>` (wouter renders Link as `<a>` itself); now passes `className` directly to `<Link>` component
+
+### Build Status
+- TypeScript: ✅ 0 errors
+- Production build: ✅ Success (client + server bundles generated)
+- Runtime: ✅ Running on port 5000

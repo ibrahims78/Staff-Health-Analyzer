@@ -502,7 +502,7 @@ export default function AuditLogs() {
                               </div>
 
                               {/* القيم قبل وبعد التغيير */}
-                              {(log.oldValues || log.newValues) && (
+                              {(!!log.oldValues || !!log.newValues) && (
                                 <div className="grid grid-cols-2 gap-3" dir="ltr">
                                   <div className="rounded-xl border border-red-200 dark:border-red-900 p-3 bg-red-50/50 dark:bg-red-950/20">
                                     <h4 className="font-bold text-xs mb-2 text-red-600 dark:text-red-400 flex items-center gap-1">

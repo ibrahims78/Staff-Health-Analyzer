@@ -206,7 +206,7 @@ export class DatabaseStorage implements IStorage {
     return employee;
   }
   async createEmployee(employee: InsertEmployee): Promise<Employee> {
-    const [created] = await db.insert(employees).values(employee).returning();
+    const [created] = await db.insert(employees).values(employee as any).returning();
     return created;
   }
   async updateEmployee(id: number, updates: Partial<InsertEmployee>): Promise<Employee> {

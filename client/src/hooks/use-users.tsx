@@ -38,7 +38,7 @@ export function useUsers() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: UpdateUserRequest }) => {
+    mutationFn: async ({ id, data }: { id: string; data: UpdateUserRequest }) => {
       const res = await fetch(`/api/users/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -60,7 +60,7 @@ export function useUsers() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: number) => {
+    mutationFn: async (id: string) => {
       const res = await fetch(`/api/users/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error("Failed to delete user");
     },

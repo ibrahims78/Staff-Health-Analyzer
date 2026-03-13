@@ -69,18 +69,20 @@ export function Sidebar() {
           {navItems.map((item) => {
             const isActive = location === item.href;
             return (
-              <Link key={item.href} href={item.href}>
-                <a className={cn(
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
                   "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 relative",
-                  isActive 
-                    ? "bg-primary/10 text-primary" 
+                  isActive
+                    ? "bg-primary/10 text-primary"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground",
                   isCollapsed && "justify-center px-0"
-                )}>
-                  {isActive && <div className="absolute inset-y-1.5 right-0 w-1 bg-primary rounded-l-full" />}
-                  <item.icon className={cn("h-5 w-5 shrink-0 transition-all", isActive ? "text-primary" : "group-hover:scale-110")} />
-                  {!isCollapsed && <span className="truncate">{item.label}</span>}
-                </a>
+                )}
+              >
+                {isActive && <div className="absolute inset-y-1.5 right-0 w-1 bg-primary rounded-l-full" />}
+                <item.icon className={cn("h-5 w-5 shrink-0 transition-all", isActive ? "text-primary" : "group-hover:scale-110")} />
+                {!isCollapsed && <span className="truncate">{item.label}</span>}
               </Link>
             );
           })}
