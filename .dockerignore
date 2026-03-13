@@ -1,0 +1,13 @@
+node_modules
+dist
+.git
+.cache
+.local
+.upm
+*.log
+storage/uploads/*
+storage/temp_uploads/*
+.replit
+replit.md
+README.md
+deployment_guide.txt

@@ -1,25 +1,39 @@
 version: '3.8'
+
 services:
   app:
     build: .
+    container_name: staff-health-app
     ports:
       - "5001:5001"
     environment:
-      - DATABASE_URL=postgres://user:password@db:5432/employee_db
-      - SESSION_SECRET=sidawin8n_secure_secret_2026
+      - DATABASE_URL=postgres://hruser:hrpassword@db:5432/hr_db
+      - SESSION_SECRET=change_this_to_a_strong_random_secret_in_production
       - NODE_ENV=production
       - PORT=5001
     volumes:
       - ./storage:/app/storage
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
   db:
-    image: postgres:15
+    image: postgres:15-alpine
+    container_name: staff-health-db
     environment:
-      - POSTGRES_USER=user
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=employee_db
+      - POSTGRES_USER=hruser
+      - POSTGRES_PASSWORD=hrpassword
+      - POSTGRES_DB=hr_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hruser -d hr_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
 volumes:
   postgres_data:
+    driver: local
