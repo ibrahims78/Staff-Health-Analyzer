@@ -1124,6 +1124,7 @@ export default function Employees() {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
+                <TableHead className="text-right w-14">الرقم</TableHead>
                 <TableHead className="text-right">الاسم</TableHead>
                 <TableHead className="text-right">المسمى الوظيفي</TableHead>
                 <TableHead className="text-right">الفئة</TableHead>
@@ -1134,13 +1135,16 @@ export default function Employees() {
             <TableBody>
               {paginatedEmployees.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-32 text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
                     لا يوجد موظفين مطابقين للبحث
                   </TableCell>
                 </TableRow>
               ) : (
-                paginatedEmployees.map((emp) => (
+                paginatedEmployees.map((emp, index) => (
                   <TableRow key={emp.id} className="hover:bg-muted/50 transition-colors" data-testid={`row-employee-${emp.id}`}>
+                    <TableCell className="text-muted-foreground text-sm font-mono text-center" data-testid={`text-seq-${emp.id}`}>
+                      {startIndex + index + 1}
+                    </TableCell>
                     <TableCell className="font-medium">{emp.fullName}</TableCell>
                     <TableCell>{emp.jobTitle}</TableCell>
                     <TableCell>{emp.category}</TableCell>
