@@ -307,6 +307,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           continue;
         }
 
+        // Normalize status spelling variations from Excel imports
+        const STATUS_NORMALIZE: Record<string, string> = {
+          'إجازة بلا اجر':  'إجازة بلا أجر',
+          'اجازة بلا اجر':  'إجازة بلا أجر',
+          'اجازة بلا أجر':  'إجازة بلا أجر',
+          'على راس عمله':   'على رأس عمله',
+          'علي رأس عمله':   'على رأس عمله',
+          'علي راس عمله':   'على رأس عمله',
+        };
+        if (data.currentStatus && STATUS_NORMALIZE[data.currentStatus]) {
+          data.currentStatus = STATUS_NORMALIZE[data.currentStatus];
+        }
+
         // Defaults for required fields
         if (!data.gender) data.gender = 'ذكر';
         if (!data.currentStatus) data.currentStatus = 'على رأس عمله';

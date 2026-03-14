@@ -69,11 +69,11 @@ export default function Dashboard() {
     }
   }
 
-  // ترتيب الأوضاع: المعرّفة أولاً بالترتيب، ثم أي أوضاع إضافية
+  // ترتيب الأوضاع: المعرّفة أولاً بالترتيب، ثم أي أوضاع إضافية — فقط التي لها موظفون
   const orderedStatuses = [
     ...ALL_STATUSES,
     ...Object.keys(statusCounts).filter(s => !ALL_STATUSES.includes(s)),
-  ];
+  ].filter(status => statusCounts[status] > 0);
 
   // بيانات المخطط الدائري - فقط الأوضاع التي لها موظفون
   const chartData = orderedStatuses
