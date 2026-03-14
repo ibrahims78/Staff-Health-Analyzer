@@ -280,7 +280,18 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         return res.status(400).json({ message: "الملف لا يحتوي على بيانات" });
       }
 
-      let imported = 0;
+      // تطبيع أسماء الحالات الشائعة
+      const STATUS_NORMALIZE: Record<string, string> = {
+        'إجازة بلا اجر': 'إجازة بلا أجر',
+        'اجازة بلا اجر': 'إجازة بلا أجر',
+        'اجازة بلا أجر': 'إجازة بلا أجر',
+        'على راس عمله':  'على رأس عمله',
+        'علي رأس عمله':  'على رأس عمله',
+        'علي راس عمله':  'على رأس عمله',
+      };
+
+      // المرحلة 1: تحقق من جميع الصفوف وجمع الصالح منها
+      const validRows: { rowNum: number; data: any }[] = [];
       const errors: Array<{ row: number; message: string }> = [];
 
       for (let i = 0; i < rows.length; i++) {
@@ -297,7 +308,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           }
         }
 
-        // Validate nationalId
+        // تحقق من الرقم الوطني
         if (!data.nationalId || !/^[0-9]{11}$/.test(data.nationalId)) {
           errors.push({ row: rowNum, message: `الرقم الوطني غير صحيح: "${data.nationalId}"` });
           continue;
@@ -307,20 +318,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           continue;
         }
 
-        // Normalize status spelling variations from Excel imports
-        const STATUS_NORMALIZE: Record<string, string> = {
-          'إجازة بلا اجر':  'إجازة بلا أجر',
-          'اجازة بلا اجر':  'إجازة بلا أجر',
-          'اجازة بلا أجر':  'إجازة بلا أجر',
-          'على راس عمله':   'على رأس عمله',
-          'علي رأس عمله':   'على رأس عمله',
-          'علي راس عمله':   'على رأس عمله',
-        };
+        // تطبيع الحالة
         if (data.currentStatus && STATUS_NORMALIZE[data.currentStatus]) {
           data.currentStatus = STATUS_NORMALIZE[data.currentStatus];
         }
 
-        // Defaults for required fields
+        // القيم الافتراضية
         if (!data.gender) data.gender = 'ذكر';
         if (!data.currentStatus) data.currentStatus = 'على رأس عمله';
         if (!data.category) data.category = 'أولى';
@@ -339,27 +342,34 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         if (!data.appointmentDecisionNumber) data.appointmentDecisionNumber = '';
         if (!data.shamCashNumber) data.shamCashNumber = '';
 
-        try {
-          const emp = await storage.createEmployee(data as any);
-          imported++;
-          if (req.user) {
-            await storage.createAuditLog({
-              userId: req.user.id,
-              action: 'CREATE',
-              entityType: 'EMPLOYEE',
-              entityId: String(emp.id),
-              newValues: { source: 'excel_import', fullName: data.fullName },
-            });
-          }
-        } catch (e: any) {
-          if (e.code === '23505') {
-            errors.push({ row: rowNum, message: `الرقم الوطني "${data.nationalId}" مدخل مسبقاً` });
-          } else {
-            errors.push({ row: rowNum, message: e.message || 'خطأ غير معروف' });
-          }
-        }
+        validRows.push({ rowNum, data });
       }
 
+      // المرحلة 2: إدخال دفعي لجميع الصفوف الصالحة (استعلام واحد بدل N استعلام)
+      const { created, duplicateNationalIds } = await storage.bulkCreateEmployees(
+        validRows.map(r => r.data)
+      );
+
+      // إضافة أخطاء التكرار
+      for (const nationalId of duplicateNationalIds) {
+        const rowNum = validRows.find(r => r.data.nationalId === nationalId)?.rowNum;
+        if (rowNum) errors.push({ row: rowNum, message: `الرقم الوطني "${nationalId}" مدخل مسبقاً` });
+      }
+
+      // المرحلة 3: تسجيل العمليات دفعياً
+      if (req.user && created.length > 0) {
+        await storage.bulkCreateAuditLogs(
+          created.map(emp => ({
+            userId: req.user!.id,
+            action: 'CREATE' as const,
+            entityType: 'EMPLOYEE' as const,
+            entityId: String(emp.id),
+            newValues: { source: 'excel_import', fullName: emp.fullName },
+          }))
+        );
+      }
+
+      const imported = created.length;
       res.json({ imported, failed: errors.length, total: rows.length, errors });
     } catch (e: any) {
       console.error('Import error:', e);
@@ -632,9 +642,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const id = Number(req.params.id);
     const employee = await storage.getEmployee(id);
     if (!employee) return res.status(404).json({ message: "Employee not found" });
-    
+
+    // حذف مجلد ملفات الموظف من القرص عند الأرشفة
+    const safeFolder = `${employee.nationalId}_${sanitizePath(employee.fullName)}`;
+    const uploadFolder = path.join(process.cwd(), "storage", "uploads", safeFolder);
+    try {
+      await fs.rm(uploadFolder, { recursive: true, force: true });
+      console.log(`Deleted upload folder for employee ${id}: ${safeFolder}`);
+    } catch (err) {
+      console.error(`Error deleting upload folder for employee ${id}:`, err);
+    }
+
     await storage.deleteEmployee(id);
-    
+
     if (req.user) {
       await storage.createAuditLog({
         userId: req.user.id,
@@ -645,7 +665,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         newValues: { isDeleted: true, deletedAt: new Date() }
       });
     }
-    
+
     res.status(204).end();
   });
 
@@ -747,8 +767,17 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     if (req.user?.role !== 'admin') {
       return res.status(403).json({ message: "Forbidden: Admin access required" });
     }
-    const logs = await storage.getAuditLogs();
-    res.json(logs);
+    const page   = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit  = Math.min(200, Math.max(10, parseInt(req.query.limit as string) || 50));
+    const action = req.query.action as string | undefined;
+    const search = req.query.search as string | undefined;
+
+    const [result, actionCounts] = await Promise.all([
+      storage.getAuditLogs(page, limit, action, search),
+      storage.getAuditLogActionCounts(),
+    ]);
+
+    res.json({ ...result, page, limit, actionCounts });
   });
 
   app.delete('/api/audit-logs', async (req, res) => {
@@ -795,9 +824,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const filename = `backup_${timestamp}.json`;
       const backupPath = path.join(backupDir, filename);
       
-      const employeesRaw = await storage.getEmployees(false, 1, 10000, true);
-      const usersData = await storage.getUsers();
-      const auditDataRaw = await storage.getAuditLogs();
+      const [employeesRaw, usersData, { logs: auditDataRaw }] = await Promise.all([
+        storage.getEmployees(false, 1, 10000, true),
+        storage.getUsers(),
+        storage.getAuditLogs(1, 1000000), // جلب جميع السجلات للنسخة الاحتياطية
+      ]);
 
       // Ensure dates are stringified correctly
       const employeesData = employeesRaw.map(e => ({

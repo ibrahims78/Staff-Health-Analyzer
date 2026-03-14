@@ -1,7 +1,7 @@
 import { db } from "./db";
 import { users, employees, auditLogs, settings } from "@shared/schema";
 import type { User, InsertUser, Employee, InsertEmployee, AuditLog, InsertAuditLog } from "@shared/schema";
-import { eq, and, notInArray, desc, inArray } from "drizzle-orm";
+import { eq, and, notInArray, desc, inArray, sql, or, ilike } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -14,50 +14,41 @@ export interface IStorage {
   resetAllOnlineStatus(): Promise<void>;
 
   // Employees
-  getEmployees(includeArchived?: boolean, page?: number, limit?: number, all?: boolean, allStatuses?: boolean): Promise<Employee[]>;
+  getEmployees(includeArchived?: boolean, page?: number, limit?: number, all?: boolean, allStatuses?: boolean, search?: string): Promise<Employee[]>;
   getEmployee(id: number): Promise<Employee | undefined>;
   createEmployee(employee: InsertEmployee): Promise<Employee>;
   updateEmployee(id: number, updates: Partial<InsertEmployee>): Promise<Employee>;
-  deleteEmployee(id: number): Promise<void>; // soft delete
-  
+  deleteEmployee(id: number): Promise<void>;
+  bulkCreateEmployees(data: InsertEmployee[]): Promise<{ created: Employee[]; duplicateNationalIds: string[] }>;
+
   // Audit Logs
   createAuditLog(log: InsertAuditLog): Promise<AuditLog>;
-  getAuditLogs(): Promise<{log: AuditLog, user: User | null}[]>;
+  bulkCreateAuditLogs(data: InsertAuditLog[]): Promise<void>;
+  getAuditLogs(page?: number, limit?: number, action?: string, search?: string): Promise<{ logs: { log: AuditLog; user: User | null }[]; total: number }>;
+  getAuditLogActionCounts(): Promise<Record<string, number>>;
   clearAuditLogs(): Promise<void>;
 
   // Settings
   getSetting(key: string): Promise<any>;
   updateSetting(key: string, value: any): Promise<any>;
-  
+
   // Backup & Restore
-  restoreFromData(data: { employees: any[], users: any[], auditLogs: any[] }): Promise<void>;
+  restoreFromData(data: { employees: any[]; users: any[]; auditLogs: any[] }): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
-  async restoreFromData(data: { employees: any[], users: any[], auditLogs: any[] }): Promise<void> {
+  async restoreFromData(data: { employees: any[]; users: any[]; auditLogs: any[] }): Promise<void> {
     await db.transaction(async (tx) => {
-      // Clear existing data
       await tx.delete(auditLogs);
       await tx.delete(employees);
       await tx.delete(users);
 
-      // Restore Users
       if (data.users && data.users.length > 0) {
         const usersToInsert = data.users.map(u => {
           const processed = { ...u };
-          const dateFields = ["lastLoginAt", "lastLogoutAt"];
-          for (const field of dateFields) {
+          for (const field of ["lastLoginAt", "lastLogoutAt"]) {
             if (processed[field]) {
-              const val = processed[field];
-              let d: Date;
-              if (val instanceof Date) {
-                d = val;
-              } else if (typeof val === 'string' || typeof val === 'number') {
-                d = new Date(val);
-              } else {
-                processed[field] = null;
-                continue;
-              }
+              const d = new Date(processed[field]);
               processed[field] = isNaN(d.getTime()) ? null : d;
             } else {
               processed[field] = null;
@@ -68,31 +59,14 @@ export class DatabaseStorage implements IStorage {
         await tx.insert(users).values(usersToInsert);
       }
 
-      // Restore Employees
       if (data.employees && data.employees.length > 0) {
+        const DATE_FIELDS = ["dateOfBirth", "appointmentDecisionDate", "firstStateStart", "firstDirectorateStart", "firstDepartmentStart", "deletedAt", "createdAt", "updatedAt"];
         const employeesToInsert = data.employees.map(e => {
           const processed = { ...e };
-          const dateFields = ["dateOfBirth", "appointmentDecisionDate", "firstStateStart", "firstDirectorateStart", "firstDepartmentStart", "deletedAt", "createdAt", "updatedAt"];
-          for (const field of dateFields) {
+          for (const field of DATE_FIELDS) {
             if (processed[field]) {
-              const val = processed[field];
-              let d: Date;
-              if (val instanceof Date) {
-                d = val;
-              } else if (typeof val === 'string' || typeof val === 'number') {
-                // Use UTC for consistent restore
-                d = new Date(val);
-              } else {
-                processed[field] = null;
-                continue;
-              }
-              
-              if (isNaN(d.getTime())) {
-                processed[field] = null;
-              } else {
-                // Ensure date is stored without local offset shifts if possible
-                processed[field] = d;
-              }
+              const d = new Date(processed[field]);
+              processed[field] = isNaN(d.getTime()) ? null : d;
             } else {
               processed[field] = null;
             }
@@ -102,23 +76,10 @@ export class DatabaseStorage implements IStorage {
         await tx.insert(employees).values(employeesToInsert);
       }
 
-      // Restore Audit Logs
       if (data.auditLogs && data.auditLogs.length > 0) {
         const logsToInsert = data.auditLogs.map(l => {
-          const val = l.createdAt;
-          let d: Date;
-          if (val instanceof Date) {
-            d = val;
-          } else if (typeof val === 'string' || typeof val === 'number') {
-            d = new Date(val);
-          } else {
-            d = new Date();
-          }
-          
-          return {
-            ...l,
-            createdAt: isNaN(d.getTime()) ? new Date() : d
-          };
+          const d = new Date(l.createdAt);
+          return { ...l, createdAt: isNaN(d.getTime()) ? new Date() : d };
         });
         await tx.insert(auditLogs).values(logsToInsert);
       }
@@ -133,138 +94,188 @@ export class DatabaseStorage implements IStorage {
   async updateSetting(key: string, value: any): Promise<any> {
     const [existing] = await db.select().from(settings).where(eq(settings.key, key));
     if (existing) {
-      const [updated] = await db.update(settings)
-        .set({ value, updatedAt: new Date() })
-        .where(eq(settings.key, key))
-        .returning();
+      const [updated] = await db.update(settings).set({ value, updatedAt: new Date() }).where(eq(settings.key, key)).returning();
       return updated.value;
     }
-    const [created] = await db.insert(settings)
-      .values({ key, value })
-      .returning();
+    const [created] = await db.insert(settings).values({ key, value }).returning();
     return created.value;
   }
 
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
-    
-    // Auto-offline check: if user was online but session expired (approximate check)
-    // In a real app, we'd use session store events, but here we can check last activity
-    // or rely on the 10min session timeout to eventually trigger logout or 
-    // simply prevent login if isOnline is true.
     return user;
   }
+
   async getUserByUsername(username: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.username, username));
     return user;
   }
+
   async createUser(insertUser: InsertUser): Promise<User> {
     const [user] = await db.insert(users).values(insertUser).returning();
     return user;
   }
+
   async getUsers(): Promise<User[]> {
     return await db.select().from(users);
   }
+
   async updateUser(id: string, updates: Partial<User>): Promise<User> {
     const [user] = await db.update(users).set(updates).where(eq(users.id, id)).returning();
     return user;
   }
+
   async deleteUser(id: string): Promise<void> {
     await db.delete(users).where(eq(users.id, id));
   }
+
   async resetAllOnlineStatus(): Promise<void> {
     await db.update(users).set({ isOnline: false, lastLogoutAt: new Date() });
   }
 
-  async getEmployees(includeArchived: boolean = false, page: number = 1, limit: number = 50, all: boolean = false, allStatuses: boolean = false): Promise<Employee[]> {
+  async getEmployees(
+    includeArchived = false,
+    page = 1,
+    limit = 50,
+    all = false,
+    allStatuses = false,
+    search?: string,
+  ): Promise<Employee[]> {
     const offset = (page - 1) * limit;
 
-    // جلب جميع الموظفين بجميع الأوضاع (للوحة التحكم والإحصائيات)
-    if (allStatuses) {
-      return await db.select().from(employees)
-        .where(eq(employees.isDeleted, false))
-        .orderBy(desc(employees.createdAt));
-    }
+    const conditions: any[] = [eq(employees.isDeleted, false)];
 
-    if (all) {
+    if (!allStatuses) {
       if (includeArchived) {
-        // جلب جميع الموظفين المؤرشفين بدون حد
-        return await db.select().from(employees).where(
-          and(
-            eq(employees.isDeleted, false),
-            notInArray(employees.currentStatus, ["على رأس عمله"])
-          )
-        ).orderBy(desc(employees.createdAt));
+        conditions.push(notInArray(employees.currentStatus, ["على رأس عمله"]));
+      } else {
+        conditions.push(eq(employees.currentStatus, "على رأس عمله"));
       }
-      // جلب جميع الموظفين النشطين بدون حد
-      return await db.select().from(employees).where(
-        and(
-          eq(employees.isDeleted, false),
-          eq(employees.currentStatus, "على رأس عمله")
-        )
-      ).orderBy(desc(employees.createdAt));
     }
 
-    if (includeArchived) {
-      // جلب الموظفين المؤرشفين فقط مع التصفح
-      return await db.select().from(employees).where(
-        and(
-          eq(employees.isDeleted, false),
-          notInArray(employees.currentStatus, ["على رأس عمله"])
-        )
-      ).limit(limit).offset(offset).orderBy(desc(employees.createdAt));
+    if (search && search.trim()) {
+      const s = `%${search.trim()}%`;
+      conditions.push(
+        or(
+          ilike(employees.fullName, s),
+          ilike(employees.nationalId, s),
+          ilike(employees.jobTitle, s),
+          ilike(employees.mobile, s),
+        ),
+      );
     }
-    // جلب الموظفين النشطين فقط مع التصفح
-    return await db.select().from(employees).where(
-      and(
-        eq(employees.isDeleted, false),
-        eq(employees.currentStatus, "على رأس عمله")
-      )
-    ).limit(limit).offset(offset).orderBy(desc(employees.createdAt));
+
+    const where = and(...conditions);
+
+    if (all || allStatuses) {
+      return await db.select().from(employees).where(where).orderBy(desc(employees.createdAt));
+    }
+
+    return await db.select().from(employees).where(where).limit(limit).offset(offset).orderBy(desc(employees.createdAt));
   }
 
-  async clearAuditLogs(): Promise<void> {
-    await db.delete(auditLogs);
-  }
   async getEmployee(id: number): Promise<Employee | undefined> {
     const [employee] = await db.select().from(employees).where(eq(employees.id, id));
     return employee;
   }
+
   async createEmployee(employee: InsertEmployee): Promise<Employee> {
     const [created] = await db.insert(employees).values(employee as any).returning();
     return created;
   }
+
   async updateEmployee(id: number, updates: Partial<InsertEmployee>): Promise<Employee> {
-    const [updated] = await db.update(employees).set({
-      ...(updates as any),
-      updatedAt: new Date(),
-    }).where(eq(employees.id, id)).returning();
+    const [updated] = await db.update(employees).set({ ...(updates as any), updatedAt: new Date() }).where(eq(employees.id, id)).returning();
     if (!updated) throw new Error("Employee not found");
     return updated;
   }
+
   async deleteEmployee(id: number): Promise<void> {
-    const [employee] = await db.select().from(employees).where(eq(employees.id, id));
-    if (employee) {
-      // Physically delete files when an employee is archived or deleted if desired
-      // But based on the request, we focus on fixing the logical flaws.
-      // Soft delete is already implemented.
-    }
-    await db.update(employees).set({ 
-      isDeleted: true,
-      deletedAt: new Date()
-    }).where(eq(employees.id, id));
+    await db.update(employees).set({ isDeleted: true, deletedAt: new Date() }).where(eq(employees.id, id));
+  }
+
+  async bulkCreateEmployees(data: InsertEmployee[]): Promise<{ created: Employee[]; duplicateNationalIds: string[] }> {
+    if (data.length === 0) return { created: [], duplicateNationalIds: [] };
+
+    const nationalIds = data.map(e => e.nationalId);
+
+    const existing = await db
+      .select({ nationalId: employees.nationalId })
+      .from(employees)
+      .where(inArray(employees.nationalId, nationalIds));
+
+    const existingSet = new Set(existing.map(e => e.nationalId));
+    const duplicateNationalIds = nationalIds.filter(id => existingSet.has(id));
+    const toInsert = data.filter(e => !existingSet.has(e.nationalId));
+
+    if (toInsert.length === 0) return { created: [], duplicateNationalIds };
+
+    const created = await db.insert(employees).values(toInsert as any).returning();
+    return { created, duplicateNationalIds };
   }
 
   async createAuditLog(log: InsertAuditLog): Promise<AuditLog> {
     const [created] = await db.insert(auditLogs).values(log).returning();
     return created;
   }
-  async getAuditLogs(): Promise<{log: AuditLog, user: User | null}[]> {
-    const logs = await db.select()
+
+  async bulkCreateAuditLogs(data: InsertAuditLog[]): Promise<void> {
+    if (data.length === 0) return;
+    await db.insert(auditLogs).values(data);
+  }
+
+  async getAuditLogs(
+    page = 1,
+    limit = 50,
+    action?: string,
+    search?: string,
+  ): Promise<{ logs: { log: AuditLog; user: User | null }[]; total: number }> {
+    const offset = (page - 1) * limit;
+
+    const conditions: any[] = [];
+    if (action && action !== 'all') {
+      conditions.push(eq(auditLogs.action, action));
+    }
+    if (search && search.trim()) {
+      const s = `%${search.trim()}%`;
+      conditions.push(
+        or(
+          ilike(auditLogs.entityType, s),
+          ilike(auditLogs.entityId, s),
+          ilike(auditLogs.action, s),
+        ),
+      );
+    }
+
+    const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const [countResult, logsResult] = await Promise.all([
+      db.select({ count: sql<number>`count(*)::int` }).from(auditLogs).where(where),
+      db
+        .select()
+        .from(auditLogs)
+        .leftJoin(users, eq(auditLogs.userId, users.id))
+        .where(where)
+        .orderBy(desc(auditLogs.id))
+        .limit(limit)
+        .offset(offset),
+    ]);
+
+    const total = Number(countResult[0]?.count ?? 0);
+    const logs = logsResult.map(l => ({ log: l.audit_logs, user: l.users }));
+    return { logs, total };
+  }
+
+  async getAuditLogActionCounts(): Promise<Record<string, number>> {
+    const result = await db
+      .select({ action: auditLogs.action, count: sql<number>`count(*)::int` })
       .from(auditLogs)
-      .leftJoin(users, eq(auditLogs.userId, users.id))
-      .orderBy(desc(auditLogs.id));
-    return logs.map(l => ({ log: l.audit_logs, user: l.users }));
+      .groupBy(auditLogs.action);
+    return result.reduce((acc, r) => { acc[r.action] = Number(r.count); return acc; }, {} as Record<string, number>);
+  }
+
+  async clearAuditLogs(): Promise<void> {
+    await db.delete(auditLogs);
   }
 }
 
