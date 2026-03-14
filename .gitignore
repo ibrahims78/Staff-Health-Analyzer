@@ -15,9 +15,12 @@ dist/
 # ============================
 # بيانات المستخدمين والملفات / User Data & Uploads
 # ============================
-storage/uploads/
-storage/backups/
-storage/temp_uploads/
+storage/uploads/*
+!storage/uploads/.gitkeep
+storage/backups/*
+!storage/backups/.gitkeep
+storage/temp_uploads/*
+!storage/temp_uploads/.gitkeep
 
 # ============================
 # بيانات الاختبار / Test Data
@@ -63,18 +66,6 @@ cloudflared-config.yml
 # Bun (نستخدم npm)
 # ============================
 bun.lock
-
-# ============================
-# ملفات التوثيق القديمة (استُبدلت بمجلد docs/)
-# ============================
-deployment_guide.txt
-دليل_النشر_المحلي_Docker.txt
-
-# ============================
-# ملفات مهجورة / Deprecated
-# ============================
-script/sync_master.ts
-script/generate-test-employees.mjs
 
 # ============================
 # السجلات / Logs
