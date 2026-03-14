@@ -2,7 +2,7 @@
 setlocal EnableDelayedExpansion
 title Employee Management System - Setup
 
-set "INSTALL_DIR=C:\employee-management"
+set "INSTALL_DIR=C:\staff_health_2026"
 set "REPO_URL=https://github.com/ibrahims78/employee-management-system.git"
 set "APP_PORT=5001"
 set "MAX_RETRIES=3"
