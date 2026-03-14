@@ -194,17 +194,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const user = await storage.getUserByUsername(username);
     
     if (user && user.isOnline) {
-      // Check if the last login was more than 15 minutes ago (longer than session timeout)
-      // This helps recover from "stuck" online status if a session wasn't closed properly
-      const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
-      const isStale = user.lastLoginAt && new Date(user.lastLoginAt) < fifteenMinutesAgo;
+      // Allow override if lastLoginAt is older than the session timeout (10 min)
+      // This auto-recovers from stuck sessions caused by crashes/restarts/abandoned tabs
+      const sessionTimeoutMs = 10 * 60 * 1000;
+      const isStale = !user.lastLoginAt || 
+        (Date.now() - new Date(user.lastLoginAt).getTime()) > sessionTimeoutMs;
 
       if (!isStale) {
         return res.status(400).json({ 
           message: "المستخدم مسجل دخول بالفعل من جهاز آخر. يرجى تسجيل الخروج أولاً أو المحاولة لاحقاً." 
         });
       }
-      // If stale, we allow the login to proceed and it will reset isOnline
+      // Session expired → allow login and reset the stale isOnline flag
+      await storage.updateUser(user.id, { isOnline: false });
     }
 
     passport.authenticate("local", async (err: any, authenticatedUser: any, info: any) => {
