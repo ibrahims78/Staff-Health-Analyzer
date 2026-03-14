@@ -5,13 +5,13 @@ services:
     build: .
     container_name: staff-health-app
     ports:
-      - "5001:5001"
+      - "${APP_PORT:-5001}:5001"
     environment:
-      - DATABASE_URL=postgres://hruser:hrpassword@db:5432/hr_db
+      - DATABASE_URL=postgres://${POSTGRES_USER:-hruser}:${POSTGRES_PASSWORD:-hrpassword}@db:5432/${POSTGRES_DB:-hr_db}
       - NODE_ENV=production
       - PORT=5001
-      - SESSION_SECRET=SH_Secure_2026_Fixed_Key
-      - COOKIE_SECURE=false
+      - SESSION_SECRET=${SESSION_SECRET:-SH_Secure_2026_Fixed_Key}
+      - COOKIE_SECURE=${COOKIE_SECURE:-false}
     volumes:
       - ./storage:/app/storage
     depends_on:
@@ -23,13 +23,13 @@ services:
     image: postgres:15-alpine
     container_name: staff-health-db
     environment:
-      - POSTGRES_USER=hruser
-      - POSTGRES_PASSWORD=hrpassword
-      - POSTGRES_DB=hr_db
+      - POSTGRES_USER=${POSTGRES_USER:-hruser}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-hrpassword}
+      - POSTGRES_DB=${POSTGRES_DB:-hr_db}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U hruser -d hr_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hruser} -d ${POSTGRES_DB:-hr_db}"]
       interval: 5s
       timeout: 5s
       retries: 10

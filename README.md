@@ -183,7 +183,8 @@ employee-management-system/
 │   └── seed-admin.ts           # إنشاء حساب المدير الأولي
 ├── 📁 docs/                    # التوثيق التفصيلي
 │   ├── docker-windows-setup.md # دليل Docker على ويندوز
-│   └── deployment.md           # دليل النشر العام
+│   ├── deployment.md           # دليل النشر العام
+│   └── table.sql               # تعريف جدول الجلسات (مرجع فقط)
 ├── 📁 storage/                 # (يُنشأ تلقائياً - غير موجود في المستودع)
 │   ├── uploads/                # مستندات الموظفين
 │   └── backups/                # النسخ الاحتياطية
@@ -191,7 +192,6 @@ employee-management-system/
 ├── docker-compose.yml          # تنسيق الخدمات
 ├── entrypoint.sh               # نقطة دخول الحاوية
 ├── setup.bat                   # إعداد تلقائي لويندوز
-├── table.sql                   # تعريف جداول قاعدة البيانات
 ├── .env.example                # نموذج المتغيرات البيئية
 ├── CHANGELOG.md                # سجل التغييرات
 └── package.json                # تعريف المشروع والتبعيات
