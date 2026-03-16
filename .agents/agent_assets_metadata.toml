@@ -18,3 +18,9 @@ id = "6zMb-FxrYyb5rgCJenhYb"
 uri = "file://attached_assets/Sidawi_AI_Assistant_Full_Pro_Updated.json"
 type = "unspecified"
 title = "Sidawi_AI_Assistant_Full_Pro_Updated.json"
+
+[[outputs]]
+id = "NM1gB-xgf2A2cVOjI3d2Y"
+uri = "file://attached_assets/Sidawi_Bot_Workflow_v2.json"
+type = "unspecified"
+title = "Sidawi_Bot_Workflow_v2.json"
