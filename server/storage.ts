@@ -40,7 +40,7 @@ export interface IStorage {
   getApiKeys(): Promise<ApiKey[]>;
   getApiKeyByValue(keyValue: string): Promise<ApiKey | undefined>;
   createApiKey(data: InsertApiKey, keyValue: string): Promise<ApiKey>;
-  updateApiKey(id: number, updates: Partial<Pick<ApiKey, "isActive" | "description" | "expiryDate">>): Promise<ApiKey>;
+  updateApiKey(id: number, updates: Partial<Pick<ApiKey, "isActive" | "description" | "expiryDate" | "keyType">>): Promise<ApiKey>;
   deleteApiKey(id: number): Promise<void>;
 }
 

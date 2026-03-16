@@ -224,6 +224,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         if (key.expiryDate && new Date() > new Date(key.expiryDate)) {
           return res.status(401).json({ message: "انتهت صلاحية مفتاح API. يرجى طلب مفتاح جديد من المسؤول." });
         }
+        // Machine keys are not allowed for browser login
+        if (key.keyType === "machine") {
+          return res.status(403).json({ message: "مفتاح الآلة (Machine) غير مسموح به لتسجيل الدخول عبر المتصفح. يُستخدم فقط للوصول البرمجي عبر API." });
+        }
       }
     } catch {
       return res.status(500).json({ message: "حدث خطأ أثناء التحقق من مفتاح API." });
@@ -314,6 +318,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // Protected middleware for all below
   app.use("/api", (req, res, next) => {
     if (req.path.startsWith("/auth")) return next();
+    // /api/v1/* routes are protected by authenticateAPI (x-api-key header) instead of session
+    if (req.path.startsWith("/v1/")) return next();
     ensureAuthenticated(req, res, next);
   });
 
@@ -1033,14 +1039,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       return res.status(403).json({ message: "الوصول مقيد للمدير فقط" });
     }
     try {
-      const { description, expiryDate } = req.body;
+      const { description, expiryDate, keyType } = req.body;
       if (!description || !description.trim()) {
         return res.status(400).json({ message: "الوصف مطلوب" });
       }
+      const resolvedKeyType = keyType === "machine" ? "machine" : "human";
       const keyValue = randomBytes(32).toString("hex");
       const created = await storage.createApiKey(
         {
           description: description.trim(),
+          keyType: resolvedKeyType,
           expiryDate: expiryDate ? new Date(expiryDate) : null,
           isActive: true,
           createdBy: req.user.id,
@@ -1066,11 +1074,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
     try {
       const id = Number(req.params.id);
-      const { isActive, description, expiryDate } = req.body;
+      const { isActive, description, expiryDate, keyType } = req.body;
       const updates: any = {};
       if (isActive !== undefined) updates.isActive = isActive;
       if (description !== undefined) updates.description = description;
       if (expiryDate !== undefined) updates.expiryDate = expiryDate ? new Date(expiryDate) : null;
+      if (keyType !== undefined) updates.keyType = keyType === "machine" ? "machine" : "human";
       const updated = await storage.updateApiKey(id, updates);
       await storage.createAuditLog({
         userId: req.user.id,

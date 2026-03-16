@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2, Download, RefreshCw, Clock, ShieldAlert, Trash2, Database, AlertTriangle, CheckCircle2, Upload, FileSpreadsheet, Key, Plus, Eye, EyeOff, Copy, ToggleLeft, ToggleRight } from "lucide-react";
+import { Loader2, Download, RefreshCw, Clock, ShieldAlert, Trash2, Database, AlertTriangle, CheckCircle2, Upload, FileSpreadsheet, Key, Plus, Eye, EyeOff, Copy, ToggleLeft, ToggleRight, Bot, UserRound } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -39,7 +39,7 @@ function ApiKeysCard() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newKey, setNewKey] = useState<{ keyValue: string; description: string } | null>(null);
   const [deleteKeyId, setDeleteKeyId] = useState<number | null>(null);
-  const [form, setForm] = useState({ description: "", expiryDate: "" });
+  const [form, setForm] = useState({ description: "", expiryDate: "", keyType: "human" as "human" | "machine" });
   const [copied, setCopied] = useState(false);
 
   const { data: keys = [], isLoading } = useQuery<any[]>({
@@ -48,7 +48,7 @@ function ApiKeysCard() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: { description: string; expiryDate?: string }) => {
+    mutationFn: async (data: { description: string; expiryDate?: string; keyType: string }) => {
       const res = await apiRequest("POST", "/api/api-keys", data);
       return res.json();
     },
@@ -56,7 +56,7 @@ function ApiKeysCard() {
       queryClient.invalidateQueries({ queryKey: ["/api/api-keys"] });
       setShowCreateModal(false);
       setNewKey({ keyValue: data.keyValue, description: data.description });
-      setForm({ description: "", expiryDate: "" });
+      setForm({ description: "", expiryDate: "", keyType: "human" });
     },
     onError: (e: any) => {
       toast({ title: "فشل إنشاء المفتاح", description: e.message, variant: "destructive" });
@@ -147,6 +147,17 @@ function ApiKeysCard() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-bold text-sm truncate">{key.description}</span>
+                        {/* Key type badge */}
+                        {key.keyType === "machine" ? (
+                          <Badge className="bg-purple-500/15 text-purple-700 dark:text-purple-400 border-purple-500/30 text-xs font-bold gap-1">
+                            <Bot className="h-3 w-3" />آلة
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30 text-xs font-bold gap-1">
+                            <UserRound className="h-3 w-3" />بشري
+                          </Badge>
+                        )}
+                        {/* Status badge */}
                         {key.isActive && !expired ? (
                           <Badge className="bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/30 text-xs font-bold">فعّال</Badge>
                         ) : expired ? (
@@ -229,6 +240,46 @@ function ApiKeysCard() {
                 data-testid="input-api-key-description"
               />
             </div>
+            {/* Key Type Selector */}
+            <div className="space-y-2">
+              <Label className="font-bold">نوع المفتاح <span className="text-destructive">*</span></Label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, keyType: "human" })}
+                  data-testid="btn-key-type-human"
+                  className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all font-bold text-sm ${
+                    form.keyType === "human"
+                      ? "border-blue-500 bg-blue-500/10 text-blue-700 dark:text-blue-400"
+                      : "border-border bg-muted/30 text-muted-foreground hover:border-blue-300 hover:bg-blue-500/5"
+                  }`}
+                >
+                  <UserRound className="h-6 w-6" />
+                  <span>بشري</span>
+                  <span className="text-xs font-normal opacity-75">لتسجيل دخول المستخدمين</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, keyType: "machine" })}
+                  data-testid="btn-key-type-machine"
+                  className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all font-bold text-sm ${
+                    form.keyType === "machine"
+                      ? "border-purple-500 bg-purple-500/10 text-purple-700 dark:text-purple-400"
+                      : "border-border bg-muted/30 text-muted-foreground hover:border-purple-300 hover:bg-purple-500/5"
+                  }`}
+                >
+                  <Bot className="h-6 w-6" />
+                  <span>آلة</span>
+                  <span className="text-xs font-normal opacity-75">للوصول البرمجي فقط</span>
+                </button>
+              </div>
+              {form.keyType === "machine" && (
+                <p className="text-xs text-purple-600 dark:text-purple-400 bg-purple-500/5 border border-purple-500/15 px-3 py-2 rounded-lg">
+                  مفاتيح الآلة لا تُستخدم لتسجيل الدخول عبر المتصفح — مخصصة للتكامل البرمجي عبر API فقط.
+                </p>
+              )}
+            </div>
+
             <div className="space-y-2">
               <Label className="font-bold">تاريخ الانتهاء <span className="text-muted-foreground text-xs font-normal">(اختياري)</span></Label>
               <Input
@@ -247,7 +298,7 @@ function ApiKeysCard() {
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setShowCreateModal(false)} className="font-bold">إلغاء</Button>
             <Button
-              onClick={() => createMutation.mutate({ description: form.description, expiryDate: form.expiryDate || undefined })}
+              onClick={() => createMutation.mutate({ description: form.description, expiryDate: form.expiryDate || undefined, keyType: form.keyType })}
               disabled={createMutation.isPending || !form.description.trim()}
               className="gap-2 font-bold"
               data-testid="btn-confirm-create-api-key"

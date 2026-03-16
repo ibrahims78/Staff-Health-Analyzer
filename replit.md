@@ -105,7 +105,7 @@ Added a full dynamic API key management system:
 - **`server/apiKeyAuth.ts`** — `authenticateAPI` middleware that checks `x-api-key` header against the database, validating existence, active status, and expiry. Returns precise Arabic error messages (401) on failure.
 
 ### Database
-- **`api_keys` table** — Stores keys with: `key_value` (64-char hex via `crypto.randomBytes(32)`), `description`, `expiry_date`, `is_active`, `created_at`, `created_by`.
+- **`api_keys` table** — Stores keys with: `key_value` (64-char hex via `crypto.randomBytes(32)`), `description`, `key_type` (`human` | `machine`), `expiry_date`, `is_active`, `created_at`, `created_by`.
 
 ### Backend Routes
 - `GET /api/api-keys` — List all keys (masked, admin only)
@@ -118,6 +118,16 @@ Added a full dynamic API key management system:
 ### Frontend
 - **`Settings.tsx`** — New `ApiKeysCard` component with table, create modal, reveal-once dialog, toggle active/inactive, delete confirmation
 - **`Login.tsx`** — Added tab system: "دخول المستخدمين" (username/password) + "مفتاح API" (validate API key for programmatic services)
+
+### Key Types (`key_type`)
+- **`human`** — Used for browser login (username + password + key). Can also be used via `x-api-key` header.
+- **`machine`** — Blocked from browser login with HTTP 403. Can only be used via `x-api-key` header for programmatic API access.
+- Login route rejects machine keys with a clear Arabic error message.
+- `/api/v1/*` routes bypass session auth middleware; protected only by `authenticateAPI` (x-api-key).
+
+### Bootstrap Mode
+- When `api_keys` table is empty, login is allowed without a key so admin can create the first key.
+- `GET /api/auth/setup-status` returns `{ apiKeyRequired: boolean }` — the login page adapts UI accordingly.
 
 ### Security
 - Keys never logged to console
