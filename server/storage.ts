@@ -32,6 +32,7 @@ export interface IStorage {
   // Settings
   getSetting(key: string): Promise<any>;
   updateSetting(key: string, value: any): Promise<any>;
+  getAllSettings(): Promise<{ id: number; key: string; value: any; updatedAt: Date }[]>;
 
   // Backup & Restore
   restoreFromData(data: { employees: any[]; users: any[]; auditLogs: any[] }): Promise<void>;
@@ -120,6 +121,10 @@ export class DatabaseStorage implements IStorage {
     }
     const [created] = await db.insert(settings).values({ key, value }).returning();
     return created.value;
+  }
+
+  async getAllSettings(): Promise<{ id: number; key: string; value: any; updatedAt: Date }[]> {
+    return db.select().from(settings);
   }
 
   async getUser(id: string): Promise<User | undefined> {

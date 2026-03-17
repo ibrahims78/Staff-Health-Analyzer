@@ -1580,6 +1580,128 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // GET /api/v1/bot/master-query  (Machine API key required)
+  // Returns the full database snapshot for the AI bot: all employees with their
+  // documents joined, all bot users, and all settings — no phone filter applied.
+  app.get("/api/v1/bot/master-query", authenticateMachineAPI, async (req, res) => {
+    try {
+      const protocol = req.protocol;
+      const host = req.get("host") || "localhost";
+      const baseUrl = `${protocol}://${host}`;
+
+      const typeMap: Record<string, string> = {
+        pdf: "PDF",
+        jpg: "صورة",
+        jpeg: "صورة",
+        png: "صورة",
+        docx: "Word",
+        doc: "Word",
+        xlsx: "Excel",
+        xls: "Excel",
+      };
+
+      // ── 1. All active (non-deleted) employees with documents joined ──────
+      const allEmployees = await storage.getEmployees(false, 1, 100000, true, true);
+      const employees_data = allEmployees.map((employee) => {
+        const rawPaths = (employee.documentPaths as string[] | null) ?? [];
+        const documents = rawPaths.map((docPath) => {
+          const fileName = path.basename(docPath);
+          const ext = path.extname(fileName).toLowerCase().replace(".", "");
+          return {
+            file_name: fileName,
+            file_type: typeMap[ext] ?? ext.toUpperCase(),
+            file_path: docPath,
+            direct_url: `${baseUrl}${docPath}`,
+          };
+        });
+
+        return {
+          id: employee.id,
+          full_name: employee.fullName,
+          national_id: employee.nationalId,
+          job_title: employee.jobTitle,
+          department: employee.assignedWork,
+          employment_status: employee.employmentStatus,
+          current_status: employee.currentStatus,
+          appointment_decision_date: employee.appointmentDecisionDate
+            ? new Date(employee.appointmentDecisionDate).toISOString()
+            : null,
+          // Additional fields
+          father_name: employee.fatherName,
+          mother_name: employee.motherName,
+          place_of_birth: employee.placeOfBirth,
+          date_of_birth: employee.dateOfBirth
+            ? new Date(employee.dateOfBirth).toISOString()
+            : null,
+          registry_place_and_number: employee.registryPlaceAndNumber,
+          sham_cash_number: employee.shamCashNumber ?? null,
+          gender: employee.gender,
+          certificate: employee.certificate,
+          certificate_type: employee.certificateType,
+          specialization: employee.specialization,
+          category: employee.category,
+          appointment_decision_number: employee.appointmentDecisionNumber,
+          first_state_start: employee.firstStateStart
+            ? new Date(employee.firstStateStart).toISOString()
+            : null,
+          first_directorate_start: employee.firstDirectorateStart
+            ? new Date(employee.firstDirectorateStart).toISOString()
+            : null,
+          first_department_start: employee.firstDepartmentStart
+            ? new Date(employee.firstDepartmentStart).toISOString()
+            : null,
+          mobile: employee.mobile,
+          address: employee.address,
+          notes: employee.notes ?? null,
+          created_at: new Date(employee.createdAt).toISOString(),
+          updated_at: new Date(employee.updatedAt).toISOString(),
+          // Joined documents
+          documents,
+          total_documents: documents.length,
+        };
+      });
+
+      // ── 2. All bot users ─────────────────────────────────────────────────
+      const allBotUsers = await storage.getBotUsers();
+      const bot_users_data = allBotUsers.map((bu) => ({
+        id: bu.id,
+        full_name: bu.fullName,
+        phone_number: bu.phoneNumber,
+        whatsapp_lid: bu.whatsappLid ?? null,
+        is_bot_active: bu.isBotActive,
+        last_interaction: bu.lastInteraction
+          ? new Date(bu.lastInteraction).toISOString()
+          : null,
+      }));
+
+      // ── 3. All settings ──────────────────────────────────────────────────
+      const allSettings = await storage.getAllSettings();
+      const settings_data = allSettings.map((s) => ({
+        key: s.key,
+        value: s.value,
+        updated_at: new Date(s.updatedAt).toISOString(),
+      }));
+
+      return res.json({
+        status: "success",
+        metadata: {
+          fetch_time: new Date().toISOString(),
+          total_employees: employees_data.length,
+          total_bot_users: bot_users_data.length,
+          total_settings: settings_data.length,
+        },
+        data: {
+          employees: employees_data,
+          bot_users: bot_users_data,
+          settings: settings_data,
+        },
+      });
+    } catch (err) {
+      console.error("[Bot master-query] Error:", err);
+      res.status(500).json({ status: "error", message: "خطأ داخلي في الخادم" });
+    }
+  });
+
   // ─── Background Cron: Deactivate inactive bot sessions every 60 seconds ───
   const INACTIVITY_THRESHOLD_MS = 10 * 60 * 1000; // 10 minutes
   setInterval(async () => {
