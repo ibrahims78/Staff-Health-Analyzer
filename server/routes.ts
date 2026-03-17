@@ -1668,6 +1668,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const genderCounts: Record<string, number> = {};
       const certTypeCounts: Record<string, number> = {};
       const jobTitleCounts: Record<string, number> = {};
+      const categoryCounts: Record<string, number> = {};
+      const specializationCounts: Record<string, number> = {};
       let withDocuments = 0;
       let withoutDocuments = 0;
 
@@ -1678,6 +1680,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         genderCounts[emp.gender] = (genderCounts[emp.gender] || 0) + 1;
         certTypeCounts[emp.certificate_type] = (certTypeCounts[emp.certificate_type] || 0) + 1;
         jobTitleCounts[emp.job_title] = (jobTitleCounts[emp.job_title] || 0) + 1;
+        categoryCounts[emp.category] = (categoryCounts[emp.category] || 0) + 1;
+        if (emp.specialization) {
+          specializationCounts[emp.specialization] = (specializationCounts[emp.specialization] || 0) + 1;
+        }
         if (emp.total_documents > 0) withDocuments++; else withoutDocuments++;
       }
 
@@ -1685,10 +1691,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         total_employees: employees_data.length,
         by_current_status: statusCounts,
         by_employment_status: employmentCounts,
+        by_category: categoryCounts,
         by_department: departmentCounts,
         by_gender: genderCounts,
         by_certificate_type: certTypeCounts,
         by_job_title: jobTitleCounts,
+        by_specialization: specializationCounts,
         with_documents: withDocuments,
         without_documents: withoutDocuments,
       };
