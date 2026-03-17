@@ -24,3 +24,9 @@ id = "NM1gB-xgf2A2cVOjI3d2Y"
 uri = "file://attached_assets/Sidawi_Bot_Workflow_v2.json"
 type = "unspecified"
 title = "Sidawi_Bot_Workflow_v2.json"
+
+[[outputs]]
+id = "MLvU8gxpn4s04CXpv-CoQ"
+uri = "file://attached_assets/Sidawi_AI_Health_V11_Fixed.json"
+type = "unspecified"
+title = "Sidawi_AI_Health_V11_Fixed.json — الورك فلو المُصحح"
