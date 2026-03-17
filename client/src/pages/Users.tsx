@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useUsers } from "@/hooks/use-users";
 import { useBotUsers } from "@/hooks/use-bot-users";
 import { Layout } from "@/components/Layout";
@@ -7,7 +7,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Pencil, Bot, Users as UsersIcon, Phone, Key, FileText, Eye, X, RefreshCw } from "lucide-react";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Plus, Trash2, Pencil, Bot, Users as UsersIcon, Phone, Key, FileText, Eye, X, RefreshCw, Wand2, ChevronsUpDown, Check, UserSearch, PenLine } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertUserSchema, insertBotUserSchema, type InsertUser, type User, type BotUser, type InsertBotUser } from "@shared/schema";
@@ -100,6 +102,15 @@ const botUserFormSchema = insertBotUserSchema.extend({
 
 type BotUserFormValues = z.infer<typeof botUserFormSchema>;
 
+function generateCode(prefix: string, length = 6): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = prefix;
+  for (let i = 0; i < length; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
+}
+
 function BotUserFormDialog({
   open,
   onOpenChange,
@@ -110,6 +121,25 @@ function BotUserFormDialog({
   botUser?: BotUser;
 }) {
   const { createBotUser, updateBotUser, isCreating, isUpdating } = useBotUsers();
+  const [inputMode, setInputMode] = useState<"search" | "manual">("search");
+  const [employeePopoverOpen, setEmployeePopoverOpen] = useState(false);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<number | null>(null);
+  const [employeeSearch, setEmployeeSearch] = useState("");
+
+  const { data: employees = [] } = useQuery<Employee[]>({
+    queryKey: ["/api/employees", "allStatuses"],
+    queryFn: async () => {
+      const res = await fetch("/api/employees?allStatuses=true");
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: open && inputMode === "search",
+  });
+
+  const filteredEmployees = employees.filter((e) =>
+    e.fullName.toLowerCase().includes(employeeSearch.toLowerCase()) ||
+    (e.mobile && e.mobile.includes(employeeSearch))
+  );
 
   const form = useForm<BotUserFormValues>({
     resolver: zodResolver(botUserFormSchema),
@@ -131,6 +161,44 @@ function BotUserFormDialog({
           lastInteraction: null,
         },
   });
+
+  useEffect(() => {
+    if (!open) {
+      form.reset({
+        fullName: "",
+        phoneNumber: "",
+        activationCode: "",
+        deactivationCode: "",
+        isBotActive: false,
+        lastInteraction: null,
+      });
+      setSelectedEmployeeId(null);
+      setEmployeeSearch("");
+      setInputMode("search");
+    }
+  }, [open]);
+
+  function handleSelectEmployee(employee: Employee) {
+    setSelectedEmployeeId(employee.id);
+    setEmployeePopoverOpen(false);
+    form.setValue("fullName", employee.fullName, { shouldValidate: true });
+    const phone = (employee.mobile || "").replace(/\D/g, "").replace(/^0+/, "");
+    form.setValue("phoneNumber", phone, { shouldValidate: true });
+    autoGenerateCodes(employee.fullName, phone);
+  }
+
+  function autoGenerateCodes(name: string, phone: string) {
+    if (name && phone) {
+      form.setValue("activationCode", generateCode("ON", 4), { shouldValidate: true });
+      form.setValue("deactivationCode", generateCode("OFF", 4), { shouldValidate: true });
+    }
+  }
+
+  function handleRegenerateCodes() {
+    const name = form.getValues("fullName");
+    const phone = form.getValues("phoneNumber");
+    autoGenerateCodes(name, phone);
+  }
 
   function onSubmit(data: BotUserFormValues) {
     if (botUser) {
@@ -160,6 +228,8 @@ function BotUserFormDialog({
   }
 
   const isPending = isCreating || isUpdating;
+  const selectedEmployee = employees.find((e) => e.id === selectedEmployeeId);
+  const isEditMode = !!botUser;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -167,54 +237,261 @@ function BotUserFormDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Bot className="h-5 w-5 text-primary" />
-            {botUser ? "تعديل بيانات مستخدم البوت" : "إضافة مستخدم بوت جديد"}
+            {isEditMode ? "تعديل بيانات مستخدم البوت" : "إضافة مستخدم بوت جديد"}
           </DialogTitle>
         </DialogHeader>
+
+        {/* ── Mode switcher (new mode only) ── */}
+        {!isEditMode && (
+          <div className="flex gap-2 rounded-lg border bg-muted/40 p-1">
+            <button
+              type="button"
+              data-testid="mode-search"
+              onClick={() => {
+                setInputMode("search");
+                setSelectedEmployeeId(null);
+                form.setValue("fullName", "");
+                form.setValue("phoneNumber", "");
+                form.setValue("activationCode", "");
+                form.setValue("deactivationCode", "");
+              }}
+              className={cn(
+                "flex flex-1 items-center justify-center gap-2 rounded-md py-1.5 text-sm font-medium transition-all",
+                inputMode === "search"
+                  ? "bg-background shadow-sm text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <UserSearch className="h-4 w-4" />
+              اختر من قاعدة البيانات
+            </button>
+            <button
+              type="button"
+              data-testid="mode-manual"
+              onClick={() => {
+                setInputMode("manual");
+                setSelectedEmployeeId(null);
+                form.setValue("fullName", "");
+                form.setValue("phoneNumber", "");
+                form.setValue("activationCode", "");
+                form.setValue("deactivationCode", "");
+              }}
+              className={cn(
+                "flex flex-1 items-center justify-center gap-2 rounded-md py-1.5 text-sm font-medium transition-all",
+                inputMode === "manual"
+                  ? "bg-background shadow-sm text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <PenLine className="h-4 w-4" />
+              إدخال يدوي
+            </button>
+          </div>
+        )}
+
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField control={form.control} name="fullName" render={({ field }) => (
-              <FormItem>
-                <FormLabel>اسم الموظف الكامل</FormLabel>
-                <FormControl>
-                  <Input data-testid="input-bot-fullname" placeholder="محمد أحمد الخطيب" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-            <FormField control={form.control} name="phoneNumber" render={({ field }) => (
-              <FormItem>
-                <FormLabel>رقم الهاتف (الصيغة الدولية)</FormLabel>
-                <FormControl>
-                  <Input data-testid="input-bot-phone" placeholder="963912345678" dir="ltr" {...field} />
-                </FormControl>
-                <p className="text-[11px] text-muted-foreground">أدخل الرقم بالصيغة الدولية بدون + أو أصفار مثل: 963912345678</p>
-                <FormMessage />
-              </FormItem>
-            )} />
-            <div className="grid grid-cols-2 gap-3">
-              <FormField control={form.control} name="activationCode" render={({ field }) => (
+
+            {/* ── Employee Search (search mode) ── */}
+            {!isEditMode && inputMode === "search" && (
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">ابحث عن موظف</label>
+                <Popover open={employeePopoverOpen} onOpenChange={setEmployeePopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      role="combobox"
+                      data-testid="combobox-employee"
+                      className="w-full justify-between font-normal"
+                    >
+                      {selectedEmployee ? (
+                        <span className="flex items-center gap-2">
+                          <span className="font-medium">{selectedEmployee.fullName}</span>
+                          {selectedEmployee.mobile && (
+                            <span className="text-xs text-muted-foreground font-mono" dir="ltr">
+                              {selectedEmployee.mobile}
+                            </span>
+                          )}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">اختر موظفاً من القائمة...</span>
+                      )}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0" align="start" style={{ width: "var(--radix-popover-trigger-width)" }}>
+                    <Command>
+                      <CommandInput
+                        placeholder="ابحث بالاسم أو رقم الهاتف..."
+                        value={employeeSearch}
+                        onValueChange={setEmployeeSearch}
+                        data-testid="input-employee-search"
+                      />
+                      <CommandList className="max-h-56">
+                        <CommandEmpty>
+                          <div className="py-4 text-center text-sm text-muted-foreground">
+                            لا يوجد موظف بهذا الاسم
+                          </div>
+                        </CommandEmpty>
+                        <CommandGroup>
+                          {filteredEmployees.slice(0, 50).map((emp) => (
+                            <CommandItem
+                              key={emp.id}
+                              value={`${emp.fullName} ${emp.mobile ?? ""}`}
+                              onSelect={() => handleSelectEmployee(emp)}
+                              data-testid={`employee-option-${emp.id}`}
+                              className="flex items-center justify-between gap-2"
+                            >
+                              <div className="flex flex-col">
+                                <span className="font-medium text-sm">{emp.fullName}</span>
+                                {emp.mobile && (
+                                  <span className="text-xs text-muted-foreground font-mono" dir="ltr">{emp.mobile}</span>
+                                )}
+                              </div>
+                              {selectedEmployeeId === emp.id && (
+                                <Check className="h-4 w-4 text-primary shrink-0" />
+                              )}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                {selectedEmployee && (
+                  <div className="flex items-center gap-2 rounded-lg border bg-primary/5 px-3 py-2 text-sm">
+                    <Check className="h-4 w-4 text-primary shrink-0" />
+                    <span>تم اختيار <strong>{selectedEmployee.fullName}</strong> — سيتم ملء البيانات تلقائياً</span>
+                    <button
+                      type="button"
+                      className="mr-auto text-muted-foreground hover:text-foreground"
+                      onClick={() => {
+                        setSelectedEmployeeId(null);
+                        form.setValue("fullName", "");
+                        form.setValue("phoneNumber", "");
+                        form.setValue("activationCode", "");
+                        form.setValue("deactivationCode", "");
+                      }}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Name & Phone Fields ── */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <FormField control={form.control} name="fullName" render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="flex items-center gap-1"><Key className="h-3 w-3 text-green-600" />كود التفعيل</FormLabel>
+                  <FormLabel>اسم الموظف الكامل</FormLabel>
                   <FormControl>
-                    <Input data-testid="input-activation-code" placeholder="تفعيل" {...field} />
+                    <Input
+                      data-testid="input-bot-fullname"
+                      placeholder="محمد أحمد الخطيب"
+                      readOnly={!isEditMode && inputMode === "search" && !!selectedEmployeeId}
+                      className={cn(!isEditMode && inputMode === "search" && !!selectedEmployeeId && "bg-muted/50")}
+                      {...field}
+                      onChange={(e) => {
+                        field.onChange(e);
+                        if (!form.getValues("activationCode")) {
+                          const phone = form.getValues("phoneNumber");
+                          if (e.target.value && phone) autoGenerateCodes(e.target.value, phone);
+                        }
+                      }}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
-              <FormField control={form.control} name="deactivationCode" render={({ field }) => (
+              <FormField control={form.control} name="phoneNumber" render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="flex items-center gap-1"><Key className="h-3 w-3 text-red-600" />كود إلغاء التفعيل</FormLabel>
+                  <FormLabel>رقم الهاتف</FormLabel>
                   <FormControl>
-                    <Input data-testid="input-deactivation-code" placeholder="إيقاف" {...field} />
+                    <Input
+                      data-testid="input-bot-phone"
+                      placeholder="963912345678"
+                      dir="ltr"
+                      readOnly={!isEditMode && inputMode === "search" && !!selectedEmployeeId}
+                      className={cn(!isEditMode && inputMode === "search" && !!selectedEmployeeId && "bg-muted/50")}
+                      {...field}
+                      onChange={(e) => {
+                        field.onChange(e);
+                        if (!form.getValues("activationCode")) {
+                          const name = form.getValues("fullName");
+                          if (name && e.target.value) autoGenerateCodes(name, e.target.value);
+                        }
+                      }}
+                    />
                   </FormControl>
+                  <p className="text-[11px] text-muted-foreground">بالصيغة الدولية بدون + مثل: 963912345678</p>
                   <FormMessage />
                 </FormItem>
               )} />
             </div>
-            <div className="flex justify-end gap-2 pt-4">
+
+            {/* ── Activation Codes ── */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">أكواد التفعيل</label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  data-testid="button-regenerate-codes"
+                  className="h-7 gap-1.5 text-xs"
+                  onClick={handleRegenerateCodes}
+                >
+                  <Wand2 className="h-3.5 w-3.5" />
+                  توليد تلقائي
+                </Button>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <FormField control={form.control} name="activationCode" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-1 text-green-700 dark:text-green-400">
+                      <Key className="h-3 w-3" />كود التفعيل
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        data-testid="input-activation-code"
+                        placeholder="ON####"
+                        dir="ltr"
+                        className="font-mono"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="deactivationCode" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-1 text-red-700 dark:text-red-400">
+                      <Key className="h-3 w-3" />كود إلغاء التفعيل
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        data-testid="input-deactivation-code"
+                        placeholder="OFF####"
+                        dir="ltr"
+                        className="font-mono"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                يتم توليد الأكواد تلقائياً عند اختيار الموظف، ويمكنك تعديلها يدوياً أو إعادة التوليد
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>إلغاء</Button>
               <Button data-testid="button-submit-bot-user" type="submit" disabled={isPending}>
-                {isPending ? "جاري الحفظ..." : "حفظ"}
+                {isPending ? "جاري الحفظ..." : isEditMode ? "حفظ التعديلات" : "إضافة المستخدم"}
               </Button>
             </div>
           </form>
