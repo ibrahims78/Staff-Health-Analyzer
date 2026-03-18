@@ -84,3 +84,9 @@ id = "WOrwZoPud4l9vEOrRcJ2v"
 uri = "file://attached_assets/Sidawi_AI_Health_V20_WithWord.json"
 type = "unspecified"
 title = "Sidawi AI Health V20 — مع أداة توليد Word"
+
+[[outputs]]
+id = "EWFtn2ilRfL4Fs1EzsXrK"
+uri = "file://attached_assets/Sidawi_AI_Health_V21_Updated.json"
+type = "unspecified"
+title = "Sidawi AI Health V21 - ورك فلو محدّث"
