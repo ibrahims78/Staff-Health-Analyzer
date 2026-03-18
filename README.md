@@ -14,7 +14,7 @@
   <img src="https://img.shields.io/badge/RTL-Arabic-green?style=for-the-badge" alt="Arabic RTL"/>
 </p>
 
-**🌐 الرابط الإنتاجي:** https://employee-management-system-ai-chat--alsid2225.replit.app
+**🌐 الرابط الإنتاجي:** https://employee-management-system-ai-chat--alsid2226.replit.app
 
 ---
 
