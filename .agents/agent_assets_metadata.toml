@@ -72,3 +72,9 @@ id = "SDQrrNPttWln4nLpJkftN"
 uri = "file://attached_assets/Sidawi_AI_Health_V18_FIXED.json"
 type = "unspecified"
 title = "Sidawi_AI_Health_V18_FIXED.json — مصحح لـ n8n"
+
+[[outputs]]
+id = "Z4x8kgqLx-9mdktq6EuS8"
+uri = "file://attached_assets/Sidawi_AI_Health_V19_Updated.json"
+type = "unspecified"
+title = "Sidawi AI Health V19 — ورك فلو محدّث"
