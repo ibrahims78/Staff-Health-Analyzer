@@ -2073,9 +2073,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       await fs.writeFile(filePath, buffer);
 
       const apiKey = (req.headers["x-api-key"] ?? req.query._t) as string;
-      const baseUrl = process.env.REPLIT_DEV_DOMAIN
-        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-        : `http://localhost:${process.env.PORT || 5000}`;
+      const baseUrl = `${req.protocol}://${req.get("host")}`;
 
       const downloadUrl = `${baseUrl}/api/v1/files/uploads/excel_exports/${encodeURIComponent(safeFileName)}?_t=${apiKey}`;
 
@@ -2301,9 +2299,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       // Build the public download URL using the /api/v1/files/ route
       const apiKey = (req.headers["x-api-key"] ?? req.query._t) as string;
-      const baseUrl = process.env.REPLIT_DEV_DOMAIN
-        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-        : `http://localhost:${process.env.PORT || 5000}`;
+      const baseUrl = `${req.protocol}://${req.get("host")}`;
 
       const downloadUrl = `${baseUrl}/api/v1/files/uploads/word_exports/${encodeURIComponent(safeFileName)}?_t=${apiKey}`;
 
