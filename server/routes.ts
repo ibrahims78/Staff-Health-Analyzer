@@ -14,6 +14,7 @@ import isIP from "validator/lib/isIP";
 import rateLimit from "express-rate-limit";
 import { format } from "date-fns";
 import * as XLSX from "xlsx";
+import { Document as DocxDocument, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from "docx";
 import { randomBytes } from "crypto";
 
 const loginLimiter = rateLimit({
@@ -1851,6 +1852,142 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     } catch (err) {
       console.error("[Bot master-query] Error:", err);
       res.status(500).json({ status: "error", message: "خطأ داخلي في الخادم" });
+    }
+  });
+
+  // ── GET /api/v1/bot/export-excel  ─────────────────────────────────────────
+  // Generates and returns an Excel file containing all active employees.
+  app.get("/api/v1/bot/export-excel", authenticateMachineAPI, async (req, res) => {
+    try {
+      const employees = await storage.getEmployees(false, 1, 100000, true, true);
+
+      const fmtDate = (d: Date | string | null | undefined) => {
+        if (!d) return "";
+        const dt = new Date(d as string);
+        if (dt.getFullYear() <= 1970) return "";
+        return format(dt, "dd/MM/yyyy");
+      };
+
+      const rows = employees.map((emp) => ({
+        "الاسم والكنية": emp.fullName,
+        "اسم الأب": emp.fatherName,
+        "اسم الأم": emp.motherName,
+        "مكان الولادة": emp.placeOfBirth,
+        "تاريخ الولادة": fmtDate(emp.dateOfBirth),
+        "محل ورقم القيد": emp.registryPlaceAndNumber,
+        "الرقم الوطني": emp.nationalId,
+        "رقم شام كاش": emp.shamCashNumber || "",
+        "الجنس": emp.gender,
+        "الشهادة": emp.certificate || "",
+        "نوع الشهادة": emp.certificateType || "",
+        "الاختصاص": emp.specialization || "",
+        "الصفة الوظيفية": emp.jobTitle,
+        "الفئة": emp.category,
+        "الوضع الوظيفي": emp.employmentStatus,
+        "رقم قرار التعيين": emp.appointmentDecisionNumber,
+        "تاريخ قرار التعيين": fmtDate(emp.appointmentDecisionDate),
+        "أول مباشرة بالدولة": fmtDate(emp.firstStateStart),
+        "أول مباشرة بالمديرية": fmtDate(emp.firstDirectorateStart),
+        "أول مباشرة بالقسم": fmtDate(emp.firstDepartmentStart),
+        "وضع العامل الحالي": emp.currentStatus,
+        "العمل المكلف به": emp.assignedWork,
+        "رقم الجوال": emp.mobile,
+        "العنوان": emp.address,
+        "ملاحظات": emp.notes || "",
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(rows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "الموظفون");
+      const buffer: Buffer = XLSX.write(workbook, { bookType: "xlsx", type: "buffer" });
+
+      const fileName = `تقرير_الموظفين_${format(new Date(), "yyyyMMdd")}.xlsx`;
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      res.setHeader("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`);
+      res.send(buffer);
+    } catch (err) {
+      console.error("[Bot export-excel] Error:", err);
+      res.status(500).json({ status: "error", message: "خطأ في إنشاء ملف Excel" });
+    }
+  });
+
+  // ── GET /api/v1/bot/export-word?employeeId=X  ─────────────────────────────
+  // Generates and returns a Word (.docx) employee card for the given employee ID.
+  app.get("/api/v1/bot/export-word", authenticateMachineAPI, async (req, res) => {
+    try {
+      const employeeId = parseInt(req.query.employeeId as string);
+      if (isNaN(employeeId)) {
+        return res.status(400).json({ message: "معرّف الموظف مطلوب (employeeId)" });
+      }
+
+      const employee = await storage.getEmployee(employeeId);
+      if (!employee) {
+        return res.status(404).json({ message: "الموظف غير موجود" });
+      }
+
+      const fmtDate = (d: Date | string | null | undefined) => {
+        if (!d) return "";
+        const dt = new Date(d as string);
+        if (dt.getFullYear() <= 1970) return "";
+        return format(dt, "dd/MM/yyyy");
+      };
+
+      const field = (label: string, value: string) =>
+        new Paragraph({
+          children: [
+            new TextRun({ text: `${label}: `, bold: true, rightToLeft: true }),
+            new TextRun({ text: value || "", rightToLeft: true }),
+          ],
+          alignment: AlignmentType.RIGHT,
+          spacing: { before: 100 },
+        });
+
+      const doc = new DocxDocument({
+        sections: [{
+          properties: {},
+          children: [
+            new Paragraph({ text: "بطاقة موظف التفصيلية", heading: HeadingLevel.HEADING_1, alignment: AlignmentType.CENTER }),
+            new Paragraph({ text: "" }),
+            new Paragraph({ children: [new TextRun({ text: "البيانات الشخصية:", bold: true, size: 32, rightToLeft: true, color: "2b6cb0" })], alignment: AlignmentType.RIGHT }),
+            field("الاسم والكنية", employee.fullName),
+            field("اسم الأب", employee.fatherName),
+            field("اسم الأم", employee.motherName),
+            field("مكان الولادة", employee.placeOfBirth),
+            field("تاريخ الولادة", fmtDate(employee.dateOfBirth)),
+            field("محل ورقم القيد", employee.registryPlaceAndNumber),
+            field("الرقم الوطني", employee.nationalId),
+            field("رقم شام كاش", employee.shamCashNumber || "غير متوفر"),
+            field("الجنس", employee.gender),
+            field("رقم الجوال", employee.mobile),
+            field("العنوان", employee.address),
+            new Paragraph({ text: "" }),
+            new Paragraph({ children: [new TextRun({ text: "البيانات الوظيفية:", bold: true, size: 32, rightToLeft: true, color: "2b6cb0" })], alignment: AlignmentType.RIGHT }),
+            field("الشهادة", employee.certificate || ""),
+            field("نوع الشهادة", employee.certificateType || ""),
+            field("الاختصاص", employee.specialization || ""),
+            field("الصفة الوظيفية", employee.jobTitle),
+            field("الفئة", employee.category),
+            field("الوضع الوظيفي", employee.employmentStatus),
+            field("رقم قرار التعيين", employee.appointmentDecisionNumber),
+            field("تاريخ قرار التعيين", fmtDate(employee.appointmentDecisionDate)),
+            field("أول مباشرة بالدولة", fmtDate(employee.firstStateStart)),
+            field("أول مباشرة بالمديرية", fmtDate(employee.firstDirectorateStart)),
+            field("أول مباشرة بالقسم", fmtDate(employee.firstDepartmentStart)),
+            field("وضع العامل الحالي", employee.currentStatus),
+            field("العمل المكلف به", employee.assignedWork),
+            field("ملاحظات", employee.notes || "لا يوجد"),
+          ],
+        }],
+      });
+
+      const buffer = await Packer.toBuffer(doc);
+      const fileName = `بطاقة_${employee.fullName}.docx`;
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+      res.setHeader("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`);
+      res.send(buffer);
+    } catch (err) {
+      console.error("[Bot export-word] Error:", err);
+      res.status(500).json({ status: "error", message: "خطأ في إنشاء ملف Word" });
     }
   });
 
