@@ -1259,13 +1259,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.patch("/api/bot-users/:id", async (req, res) => {
     try {
       const id = Number(req.params.id);
-      const { fullName, phoneNumber, activationCode, deactivationCode, isBotActive } = req.body;
+      const { fullName, phoneNumber, activationCode, deactivationCode, isBotActive, resetLid } = req.body;
       const updates: any = {};
       if (fullName !== undefined) updates.fullName = String(fullName).trim();
       if (phoneNumber !== undefined) updates.phoneNumber = normalizePhone(String(phoneNumber));
       if (activationCode !== undefined) updates.activationCode = String(activationCode).trim();
       if (deactivationCode !== undefined) updates.deactivationCode = String(deactivationCode).trim();
       if (isBotActive !== undefined) updates.isBotActive = Boolean(isBotActive);
+      // إعادة تعيين الجهاز: مسح LID المسجل حتى يتمكن المستخدم من التفعيل من جهاز جديد
+      if (resetLid === true) updates.whatsappLid = null;
       const old = await storage.getBotUser(id);
       const updated = await storage.updateBotUser(id, updates);
       if (req.user) {
@@ -1421,6 +1423,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           }
         } else {
           // LID format → لا يمكن مقارنته بالهاتف، WhatsApp يخفي الرقم الحقيقي
+          // ── حماية من سرقة الجلسة: إذا كان المستخدم لديه LID مسجل مسبقاً ويختلف عن الوارد → رفض ──
+          if (activationMatch.whatsappLid && activationMatch.whatsappLid !== incomingLid) {
+            console.log(`[check-auth] محاولة سرقة جلسة بكود التفعيل: incoming LID=${incomingLid}, registered LID=${activationMatch.whatsappLid}`);
+            return res.json({ authorized: false, action: "unauthorized" });
+          }
           console.log(`[check-auth] تفعيل عبر LID (${incomingLid}) → لا مقارنة هاتفية ممكنة، مقبول بالكود`);
         }
         await storage.updateBotUser(activationMatch.id, {
@@ -1447,6 +1454,11 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             return res.json({ authorized: false, action: "unauthorized" });
           }
         } else {
+          // ── حماية من سرقة الجلسة: إذا كان المستخدم لديه LID مسجل مسبقاً ويختلف عن الوارد → رفض ──
+          if (deactivationMatch.whatsappLid && deactivationMatch.whatsappLid !== incomingLid) {
+            console.log(`[check-auth] محاولة سرقة جلسة بكود الإيقاف: incoming LID=${incomingLid}, registered LID=${deactivationMatch.whatsappLid}`);
+            return res.json({ authorized: false, action: "unauthorized" });
+          }
           console.log(`[check-auth] إيقاف عبر LID (${incomingLid}) → لا مقارنة هاتفية ممكنة، مقبول بالكود`);
         }
         await storage.updateBotUser(deactivationMatch.id, { isBotActive: false, lastInteraction: new Date() });

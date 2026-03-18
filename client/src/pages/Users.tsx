@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, Trash2, Pencil, Bot, Users as UsersIcon, Phone, Key, FileText, Eye, X, RefreshCw, Wand2, ChevronsUpDown, Check, UserSearch, PenLine } from "lucide-react";
+import { Plus, Trash2, Pencil, Bot, Users as UsersIcon, Phone, Key, FileText, Eye, X, RefreshCw, Wand2, ChevronsUpDown, Check, UserSearch, PenLine, SmartphoneNfc } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertUserSchema, insertBotUserSchema, type InsertUser, type User, type BotUser, type InsertBotUser } from "@shared/schema";
@@ -745,6 +745,9 @@ export default function UsersPage() {
                       <div className="flex items-center gap-1"><Phone className="h-3.5 w-3.5" />رقم الهاتف</div>
                     </TableHead>
                     <TableHead className="text-right">حالة البوت</TableHead>
+                    <TableHead className="text-right">
+                      <div className="flex items-center gap-1"><SmartphoneNfc className="h-3.5 w-3.5" />الجهاز</div>
+                    </TableHead>
                     <TableHead className="text-right">آخر تفاعل</TableHead>
                     <TableHead className="text-right">
                       <div className="flex items-center gap-1"><Key className="h-3.5 w-3.5" />الأكواد</div>
@@ -775,6 +778,16 @@ export default function UsersPage() {
                           <span className={cn("h-1.5 w-1.5 rounded-full", bu.isBotActive ? "bg-green-500 animate-pulse" : "bg-gray-400")} />
                           {bu.isBotActive ? "نشط" : "غير نشط"}
                         </Badge>
+                      </TableCell>
+                      <TableCell data-testid={`device-${bu.id}`}>
+                        {bu.whatsappLid ? (
+                          <Badge variant="outline" className="gap-1 text-[10px] border-purple-300 text-purple-700 dark:border-purple-700 dark:text-purple-400">
+                            <SmartphoneNfc className="h-3 w-3" />
+                            مسجّل
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-muted-foreground/50">غير مسجّل</span>
+                        )}
                       </TableCell>
                       <TableCell>
                         {bu.lastInteraction ? (
@@ -811,6 +824,37 @@ export default function UsersPage() {
                           >
                             <RefreshCw className={cn("h-4 w-4", bu.isBotActive ? "text-orange-500" : "text-green-600")} />
                           </Button>
+                          {bu.whatsappLid && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  data-testid={`button-reset-lid-${bu.id}`}
+                                  title="إعادة تعيين الجهاز (مسح LID المسجل)"
+                                >
+                                  <SmartphoneNfc className="h-4 w-4 text-purple-600" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>إعادة تعيين الجهاز</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    سيتم مسح معرّف الجهاز (WhatsApp LID) المرتبط بـ <strong>{bu.fullName}</strong>. بعد ذلك يمكن للمستخدم التفعيل من جهاز جديد باستخدام كود التفعيل. هل أنت متأكد؟
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => updateBotUser({ id: bu.id, data: { resetLid: true } as any })}
+                                    className="bg-purple-600 hover:bg-purple-700"
+                                  >
+                                    إعادة تعيين
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"
