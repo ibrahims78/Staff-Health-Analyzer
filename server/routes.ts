@@ -1397,21 +1397,31 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       const allBotUsers = await storage.getBotUsers();
 
-      // Helper: تطابق مرن لآخر 9 أرقام من الهاتف
-      const phonesMatch = (a: string, b: string) => {
-        const na = normalizePhone(a);
-        const nb = normalizePhone(b);
+      // ─── هل المُرسِل يستخدم WhatsApp LID (معرف داخلي مشفر) أم رقم هاتف عادي؟ ───
+      // LID مثال: 203066120912949@lid  →  لا يمكن مقارنته برقم هاتف (اختلاف جذري)
+      // رقم عادي مثال: 963933706403 أو 963933706403@c.us  →  يمكن المقارنة
+      const isLidFormat = incomingLid.includes("@lid");
+
+      // Helper: تطابق مرن لآخر 9 أرقام من الهاتف (للأرقام العادية فقط)
+      const phonesMatch = (registered: string, incoming: string) => {
+        const na = normalizePhone(registered);
+        const nb = normalizePhone(incoming);
         if (!na || !nb) return false;
         return na.slice(-9) === nb.slice(-9);
       };
 
-      // بحث بكود التفعيل مع التحقق من رقم الهاتف المسجل
+      // بحث بكود التفعيل
       const activationMatch = allBotUsers.find(u => u.activationCode === incomingCode);
       if (activationMatch) {
-        // ✅ التحقق: رقم هاتف المُرسِل يجب أن يطابق رقم المستخدم المسجل
-        if (!phonesMatch(activationMatch.phoneNumber, incomingLid)) {
-          console.log(`[check-auth] كود تفعيل صحيح لكن رقم الهاتف غير مطابق: incoming=${incomingLid}, registered=${activationMatch.phoneNumber}`);
-          return res.json({ authorized: false, action: "unauthorized" });
+        if (!isLidFormat) {
+          // رقم هاتف عادي → نتحقق من تطابقه مع الرقم المسجل
+          if (!phonesMatch(activationMatch.phoneNumber, incomingLid)) {
+            console.log(`[check-auth] كود تفعيل صحيح لكن رقم الهاتف غير مطابق: incoming=${incomingLid}, registered=${activationMatch.phoneNumber}`);
+            return res.json({ authorized: false, action: "unauthorized" });
+          }
+        } else {
+          // LID format → لا يمكن مقارنته بالهاتف، WhatsApp يخفي الرقم الحقيقي
+          console.log(`[check-auth] تفعيل عبر LID (${incomingLid}) → لا مقارنة هاتفية ممكنة، مقبول بالكود`);
         }
         await storage.updateBotUser(activationMatch.id, {
           whatsappLid: incomingLid,
@@ -1427,13 +1437,17 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         });
       }
 
-      // بحث بكود الإيقاف مع التحقق من رقم الهاتف المسجل
+      // بحث بكود الإيقاف
       const deactivationMatch = allBotUsers.find(u => u.deactivationCode === incomingCode);
       if (deactivationMatch) {
-        // ✅ التحقق: رقم هاتف المُرسِل يجب أن يطابق رقم المستخدم المسجل
-        if (!phonesMatch(deactivationMatch.phoneNumber, incomingLid)) {
-          console.log(`[check-auth] كود إيقاف صحيح لكن رقم الهاتف غير مطابق: incoming=${incomingLid}, registered=${deactivationMatch.phoneNumber}`);
-          return res.json({ authorized: false, action: "unauthorized" });
+        if (!isLidFormat) {
+          // رقم هاتف عادي → نتحقق من تطابقه مع الرقم المسجل
+          if (!phonesMatch(deactivationMatch.phoneNumber, incomingLid)) {
+            console.log(`[check-auth] كود إيقاف صحيح لكن رقم الهاتف غير مطابق: incoming=${incomingLid}, registered=${deactivationMatch.phoneNumber}`);
+            return res.json({ authorized: false, action: "unauthorized" });
+          }
+        } else {
+          console.log(`[check-auth] إيقاف عبر LID (${incomingLid}) → لا مقارنة هاتفية ممكنة، مقبول بالكود`);
         }
         await storage.updateBotUser(deactivationMatch.id, { isBotActive: false, lastInteraction: new Date() });
         return res.json({
