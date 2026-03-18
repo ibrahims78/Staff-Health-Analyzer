@@ -476,7 +476,7 @@ function EmployeeFormDialog({ open, onOpenChange, employee }: { open: boolean; o
             <div className="text-right">
               <Label>رفع مستندات الموظف</Label>
               <Input type="file" multiple onChange={(e) => setDocumentFiles(prev => [...prev, ...Array.from(e.target.files || [])])} className="mt-1" data-testid="input-documents" />
-              {employee?.documentPaths && Array.isArray(employee.documentPaths) && (employee.documentPaths as string[]).length > 0 && (
+              {Array.isArray(employee?.documentPaths) && (employee!.documentPaths as string[]).length > 0 && (
                 <div className="mt-4">
                   <Label className="text-sm font-bold">المستندات المرفوعة حالياً:</Label>
                   <div className="grid grid-cols-1 gap-2 mt-2">
