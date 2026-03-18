@@ -1911,6 +1911,81 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ── GET /api/v1/bot/generate-excel-link  ──────────────────────────────────
+  // Generates an Excel file with all employees, saves it, and returns a public URL.
+  app.get("/api/v1/bot/generate-excel-link", authenticateMachineAPI, async (req, res) => {
+    try {
+      const employees = await storage.getEmployees(false, 1, 100000, true, true);
+
+      const fmtDate = (d: Date | string | null | undefined) => {
+        if (!d) return "";
+        const dt = new Date(d as string);
+        if (dt.getFullYear() <= 1970) return "";
+        return format(dt, "dd/MM/yyyy");
+      };
+
+      const rows = employees.map((emp) => ({
+        "الاسم والكنية": emp.fullName,
+        "اسم الأب": emp.fatherName,
+        "اسم الأم": emp.motherName,
+        "مكان الولادة": emp.placeOfBirth,
+        "تاريخ الولادة": fmtDate(emp.dateOfBirth),
+        "محل ورقم القيد": emp.registryPlaceAndNumber,
+        "الرقم الوطني": emp.nationalId,
+        "رقم شام كاش": emp.shamCashNumber || "",
+        "الجنس": emp.gender,
+        "الشهادة": emp.certificate || "",
+        "نوع الشهادة": emp.certificateType || "",
+        "الاختصاص": emp.specialization || "",
+        "الصفة الوظيفية": emp.jobTitle,
+        "الفئة": emp.category,
+        "الوضع الوظيفي": emp.employmentStatus,
+        "رقم قرار التعيين": emp.appointmentDecisionNumber,
+        "تاريخ قرار التعيين": fmtDate(emp.appointmentDecisionDate),
+        "أول مباشرة بالدولة": fmtDate(emp.firstStateStart),
+        "أول مباشرة بالمديرية": fmtDate(emp.firstDirectorateStart),
+        "أول مباشرة بالقسم": fmtDate(emp.firstDepartmentStart),
+        "وضع العامل الحالي": emp.currentStatus,
+        "العمل المكلف به": emp.assignedWork,
+        "رقم الجوال": emp.mobile,
+        "العنوان": emp.address,
+        "ملاحظات": emp.notes || "",
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(rows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "الموظفون");
+      const buffer: Buffer = XLSX.write(workbook, { bookType: "xlsx", type: "buffer" });
+
+      const excelExportsDir = path.join(process.cwd(), "storage", "uploads", "excel_exports");
+      await fs.mkdir(excelExportsDir, { recursive: true });
+
+      const safeFileName = `تقرير_الموظفين_${format(new Date(), "yyyyMMdd_HHmmss")}.xlsx`;
+      const filePath = path.join(excelExportsDir, safeFileName);
+      await fs.writeFile(filePath, buffer);
+
+      const apiKey = (req.headers["x-api-key"] ?? req.query._t) as string;
+      const baseUrl = process.env.REPLIT_DEV_DOMAIN
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+        : `http://localhost:${process.env.PORT || 5000}`;
+
+      const downloadUrl = `${baseUrl}/api/v1/files/uploads/excel_exports/${encodeURIComponent(safeFileName)}?_t=${apiKey}`;
+
+      console.log(`[Bot generate-excel-link] Generated Excel for ${employees.length} employees: ${safeFileName}`);
+
+      res.json({
+        status: "success",
+        employeeCount: employees.length,
+        downloadUrl,
+        fileName: safeFileName,
+        message: `تم إنشاء ملف Excel يحتوي على ${employees.length} موظف. رابط التنزيل: ${downloadUrl}`,
+      });
+    } catch (err) {
+      console.error("[Bot generate-excel-link] Error:", err);
+      res.status(500).json({ status: "error", message: "خطأ في إنشاء ملف Excel" });
+    }
+  });
+
   // ── GET /api/v1/bot/export-word?employeeId=X  ─────────────────────────────
   // Generates and returns a Word (.docx) employee card for the given employee ID.
   app.get("/api/v1/bot/export-word", authenticateMachineAPI, async (req, res) => {
