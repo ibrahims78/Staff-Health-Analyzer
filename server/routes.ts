@@ -1390,16 +1390,29 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         return res.json({ authorized: false, action: "unauthorized" });
       }
 
-      // ── 2. LID غير معروف → البحث عبر الكود ─────────────────────────────────
+      // ── 2. LID غير معروف → البحث عبر الكود مع التحقق من رقم الهاتف ──────────
       if (!incomingCode) {
         return res.json({ authorized: false, action: "unauthorized" });
       }
 
       const allBotUsers = await storage.getBotUsers();
 
-      // بحث بكود التفعيل
+      // Helper: تطابق مرن لآخر 9 أرقام من الهاتف
+      const phonesMatch = (a: string, b: string) => {
+        const na = normalizePhone(a);
+        const nb = normalizePhone(b);
+        if (!na || !nb) return false;
+        return na.slice(-9) === nb.slice(-9);
+      };
+
+      // بحث بكود التفعيل مع التحقق من رقم الهاتف المسجل
       const activationMatch = allBotUsers.find(u => u.activationCode === incomingCode);
       if (activationMatch) {
+        // ✅ التحقق: رقم هاتف المُرسِل يجب أن يطابق رقم المستخدم المسجل
+        if (!phonesMatch(activationMatch.phoneNumber, incomingLid)) {
+          console.log(`[check-auth] كود تفعيل صحيح لكن رقم الهاتف غير مطابق: incoming=${incomingLid}, registered=${activationMatch.phoneNumber}`);
+          return res.json({ authorized: false, action: "unauthorized" });
+        }
         await storage.updateBotUser(activationMatch.id, {
           whatsappLid: incomingLid,
           isBotActive: true,
@@ -1414,9 +1427,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         });
       }
 
-      // بحث بكود الإيقاف
+      // بحث بكود الإيقاف مع التحقق من رقم الهاتف المسجل
       const deactivationMatch = allBotUsers.find(u => u.deactivationCode === incomingCode);
       if (deactivationMatch) {
+        // ✅ التحقق: رقم هاتف المُرسِل يجب أن يطابق رقم المستخدم المسجل
+        if (!phonesMatch(deactivationMatch.phoneNumber, incomingLid)) {
+          console.log(`[check-auth] كود إيقاف صحيح لكن رقم الهاتف غير مطابق: incoming=${incomingLid}, registered=${deactivationMatch.phoneNumber}`);
+          return res.json({ authorized: false, action: "unauthorized" });
+        }
         await storage.updateBotUser(deactivationMatch.id, { isBotActive: false, lastInteraction: new Date() });
         return res.json({
           authorized: true,
