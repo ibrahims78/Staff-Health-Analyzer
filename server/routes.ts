@@ -1309,43 +1309,65 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   // ─── Bot API Endpoints (machine API key required) ─────────────────────────
 
   // POST /api/v1/bot/check-auth  (Hybrid LID Mapping & Fixed-Code Sessions)
+  // Returns `action` field to drive n8n flow:
+  //   "activated"       – user just sent activation code, bot is now ON  → send welcome msg
+  //   "deactivated"     – user sent deactivation code manually           → send goodbye msg
+  //   "auto_deactivated"– bot was ON but 10 min of inactivity elapsed    → send timeout msg
+  //   "message"         – normal message, bot is active                  → pass to AI
+  //   "unauthorized"    – phone/code not recognised                      → silence
   app.post("/api/v1/bot/check-auth", authenticateMachineAPI, async (req, res) => {
     try {
       const { phoneNumber, activationCode } = req.body;
 
-      // phoneNumber هنا هو الـ LID القادم من n8n
       if (!phoneNumber) {
-        return res.status(400).json({ authorized: false, message: "phoneNumber مطلوب" });
+        return res.status(400).json({ authorized: false, action: "unauthorized", message: "phoneNumber مطلوب" });
       }
 
-      const incomingLid = String(phoneNumber).trim();
+      const incomingLid  = String(phoneNumber).trim();
       const incomingCode = activationCode ? String(activationCode).trim() : null;
 
+      // Helper: did the last interaction happen more than 10 minutes ago?
+      const AUTO_TIMEOUT_MS = 10 * 60 * 1000; // 10 دقائق
+      const isTimedOut = (lastInteraction: Date | null) => {
+        if (!lastInteraction) return true;
+        return Date.now() - new Date(lastInteraction).getTime() > AUTO_TIMEOUT_MS;
+      };
+
       // ── 1. التعرف التلقائي عبر LID ──────────────────────────────────────────
-      // ابحث أولاً إذا كان هذا الـ LID مرتبط بحساب موظف
       let botUser = await storage.getBotUserByLid(incomingLid);
 
       if (botUser) {
-        // ── الأولوية الأعلى: كود الإيقاف يُنهي الجلسة فوراً بغض النظر عن حالتها
+        // الأولوية الأعلى: كود الإيقاف → إيقاف فوري
         if (incomingCode && incomingCode === botUser.deactivationCode) {
-          await storage.updateBotUser(botUser.id, {
-            isBotActive: false,
-            lastInteraction: new Date(),
-          });
+          await storage.updateBotUser(botUser.id, { isBotActive: false, lastInteraction: new Date() });
           return res.json({
             authorized: true,
             is_bot_active: false,
+            action: "deactivated",
             full_name: botUser.fullName,
             deactivation_code: botUser.deactivationCode,
           });
         }
 
         if (botUser.isBotActive) {
-          // الجلسة نشطة + LID معروف → تعرّف تلقائي، جدّد last_interaction
+          // الجلسة نشطة → فحص timeout 10 دقائق
+          if (isTimedOut(botUser.lastInteraction as Date | null)) {
+            // انتهت مدة 10 دقائق → إيقاف تلقائي
+            await storage.updateBotUser(botUser.id, { isBotActive: false, lastInteraction: new Date() });
+            return res.json({
+              authorized: true,
+              is_bot_active: false,
+              action: "auto_deactivated",
+              full_name: botUser.fullName,
+              deactivation_code: botUser.deactivationCode,
+            });
+          }
+          // جلسة نشطة ضمن الوقت → رسالة عادية
           await storage.updateBotUser(botUser.id, { lastInteraction: new Date() });
           return res.json({
             authorized: true,
             is_bot_active: true,
+            action: "message",
             full_name: botUser.fullName,
             deactivation_code: botUser.deactivationCode,
           });
@@ -1353,35 +1375,30 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
         // LID معروف + جلسة منتهية → نفحص كود التفعيل
         if (incomingCode && incomingCode === botUser.activationCode) {
-          await storage.updateBotUser(botUser.id, {
-            isBotActive: true,
-            lastInteraction: new Date(),
-          });
+          await storage.updateBotUser(botUser.id, { isBotActive: true, lastInteraction: new Date() });
           return res.json({
             authorized: true,
             is_bot_active: true,
+            action: "activated",
             full_name: botUser.fullName,
             deactivation_code: botUser.deactivationCode,
           });
         }
 
-        // LID معروف + جلسة منتهية + لا كود صالح → مرفوض
-        return res.json({ authorized: false });
+        // LID معروف + جلسة منتهية + لا كود صالح → صامت
+        return res.json({ authorized: false, action: "unauthorized" });
       }
 
       // ── 2. LID غير معروف → البحث عبر الكود ─────────────────────────────────
       if (!incomingCode) {
-        // لا يوجد LID مسجل ولا كود → مرفوض
-        return res.json({ authorized: false });
+        return res.json({ authorized: false, action: "unauthorized" });
       }
 
-      // جلب جميع المستخدمين للمطابقة بالكود
       const allBotUsers = await storage.getBotUsers();
 
       // بحث بكود التفعيل
       const activationMatch = allBotUsers.find(u => u.activationCode === incomingCode);
       if (activationMatch) {
-        // ربط الـ LID الجديد بالحساب وتفعيل الجلسة
         await storage.updateBotUser(activationMatch.id, {
           whatsappLid: incomingLid,
           isBotActive: true,
@@ -1390,31 +1407,30 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         return res.json({
           authorized: true,
           is_bot_active: true,
+          action: "activated",
           full_name: activationMatch.fullName,
           deactivation_code: activationMatch.deactivationCode,
         });
       }
 
-      // بحث بكود الإيقاف (حتى لو اللـ LID جديد، يُكرَّم كود الإيقاف)
+      // بحث بكود الإيقاف
       const deactivationMatch = allBotUsers.find(u => u.deactivationCode === incomingCode);
       if (deactivationMatch) {
-        await storage.updateBotUser(deactivationMatch.id, {
-          isBotActive: false,
-          lastInteraction: new Date(),
-        });
+        await storage.updateBotUser(deactivationMatch.id, { isBotActive: false, lastInteraction: new Date() });
         return res.json({
           authorized: true,
           is_bot_active: false,
+          action: "deactivated",
           full_name: deactivationMatch.fullName,
           deactivation_code: deactivationMatch.deactivationCode,
         });
       }
 
-      // لم يُطابَق شيء → مرفوض
-      return res.json({ authorized: false });
+      // لم يُطابَق شيء → صامت
+      return res.json({ authorized: false, action: "unauthorized" });
 
     } catch (err) {
-      res.status(500).json({ authorized: false, message: "خطأ في التحقق من الصلاحية" });
+      res.status(500).json({ authorized: false, action: "unauthorized", message: "خطأ في التحقق من الصلاحية" });
     }
   });
 

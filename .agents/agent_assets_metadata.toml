@@ -60,3 +60,9 @@ id = "7QpmlStXP0Nj1wi7e1gFr"
 uri = "file://storage/backups/Sidawi_AI_Health_V17_NewKey.json"
 type = "unspecified"
 title = "Sidawi_AI_Health_V17_NewKey.json"
+
+[[outputs]]
+id = "339C2edvA64G74cOT2_4t"
+uri = "file://storage/backups/Sidawi_AI_Health_V18_Actions.json"
+type = "unspecified"
+title = "Sidawi_AI_Health_V18 - Workflow مع رسائل التفعيل والإيقاف"
