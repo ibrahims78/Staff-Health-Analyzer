@@ -936,11 +936,28 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     if (req.user?.role !== 'admin') {
       return res.status(403).json({ message: "Forbidden: Admin access required" });
     }
+    const { action } = req.query as { action?: string };
     try {
-      await storage.clearAuditLogs();
-      res.json({ message: "تم مسح سجل العمليات بنجاح" });
+      await storage.clearAuditLogs(action);
+      res.json({ message: action ? `تم مسح سجلات ${action} بنجاح` : "تم مسح سجل العمليات بنجاح" });
     } catch (e: any) {
       res.status(500).json({ message: e.message || "خطأ أثناء مسح السجل" });
+    }
+  });
+
+  // ─── DELETE /api/audit-logs/:id ─────────────────────────────────────────────
+  // حذف سجل واحد بواسطة ID
+  app.delete('/api/audit-logs/:id', async (req, res) => {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ message: "Forbidden: Admin access required" });
+    }
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ message: "معرّف غير صالح" });
+    try {
+      await storage.deleteAuditLog(id);
+      res.json({ message: "تم حذف السجل بنجاح" });
+    } catch (e: any) {
+      res.status(500).json({ message: e.message || "خطأ أثناء حذف السجل" });
     }
   });
 

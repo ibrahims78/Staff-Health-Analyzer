@@ -27,7 +27,8 @@ export interface IStorage {
   getAuditLogs(page?: number, limit?: number, action?: string, search?: string): Promise<{ logs: { log: AuditLog; user: User | null }[]; total: number }>;
   getEmployeeHistory(employeeId: string): Promise<{ log: AuditLog; user: User | null }[]>;
   getAuditLogActionCounts(): Promise<Record<string, number>>;
-  clearAuditLogs(): Promise<void>;
+  clearAuditLogs(action?: string): Promise<void>;
+  deleteAuditLog(id: number): Promise<void>;
 
   // Settings
   getSetting(key: string): Promise<any>;
@@ -301,8 +302,16 @@ export class DatabaseStorage implements IStorage {
     return result.reduce((acc, r) => { acc[r.action] = Number(r.count); return acc; }, {} as Record<string, number>);
   }
 
-  async clearAuditLogs(): Promise<void> {
-    await db.delete(auditLogs);
+  async clearAuditLogs(action?: string): Promise<void> {
+    if (action) {
+      await db.delete(auditLogs).where(eq(auditLogs.action, action));
+    } else {
+      await db.delete(auditLogs);
+    }
+  }
+
+  async deleteAuditLog(id: number): Promise<void> {
+    await db.delete(auditLogs).where(eq(auditLogs.id, id));
   }
 
   async getEmployeeHistory(employeeId: string): Promise<{ log: AuditLog; user: User | null }[]> {
