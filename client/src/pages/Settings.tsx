@@ -1301,6 +1301,9 @@ export default function Settings() {
             </CardContent>
           </Card>
         </div>
+
+            {/* Notification & Bot Settings */}
+            <NotificationSettingsCard />
         </div>
       </div>
 
