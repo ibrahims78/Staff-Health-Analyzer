@@ -1,9 +1,11 @@
 import express, { type Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { db } from "./db";
 import { api } from "@shared/routes";
 import { setupAuth, hashPassword } from "./auth";
 import { authenticateAPI, authenticateMachineAPI } from "./apiKeyAuth";
+import { type Employee } from "@shared/schema";
 import passport from "passport";
 import { z } from "zod";
 import multer from "multer";
