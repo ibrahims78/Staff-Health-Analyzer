@@ -1197,8 +1197,8 @@
           ]
         },
         "sendBody": true,
-        "bodyContentType": "json",
-        "body": {
+        "options": {},
+        "bodyParameters": {
           "parameters": [
             {
               "name": "eventType",
@@ -1209,8 +1209,7 @@
               "value": "=✅ تفعيل جديد للبوت\n\n👤 الاسم: {{ $('Verify_Identity').item.json.full_name }}\n📡 المصدر: {{ $json.source }}\n📞 الرقم: {{ $json.from }}\n⏰ الوقت: {{ new Date().toLocaleString('ar-SA') }}\n\n💡 المستخدم أصبح نشطاً في النظام."
             }
           ]
-        },
-        "options": {}
+        }
       }
     }
   ],

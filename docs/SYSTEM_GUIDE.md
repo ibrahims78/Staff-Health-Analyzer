@@ -130,8 +130,10 @@ employee-management-system/
 │   ├── docker-windows-setup.md     # إعداد Docker على ويندوز
 │   ├── table.sql                   # تعريف جدول الجلسات (مرجع)
 │   └── 📁 workflows/
-│       ├── Sidawi_AI_Health_V22.json  # ورك فلو n8n — واتساب فقط
-│       └── Sidawi_AI_Health_V23.json  # ورك فلو n8n — واتساب + تلغرام (موصى به)
+│       ├── Sidawi_AI_Health_V22.json      # ورك فلو n8n — واتساب فقط (14 عقدة)
+│       ├── Sidawi_AI_Health_V22_Guide.md  # دليل V22 التفصيلي
+│       ├── Sidawi_AI_Health_V23.json      # ورك فلو n8n — واتساب + تلغرام (37 عقدة)
+│       └── Sidawi_AI_Health_V23_Guide.md  # دليل V23 التفصيلي
 │
 ├── 📁 script/                      # سكريبتات مساعدة
 │   ├── build.ts                    # سكريبت البناء (esbuild + Vite)
@@ -456,7 +458,15 @@ GET /api/v1/bot/generate-custom-excel
 | `GET` | `/api/v1/bot/generate-custom-excel` | تصدير Excel مخصص بفلاتر وأعمدة + رابط |
 | `POST` | `/api/v1/bot/log-conversation` | حفظ سجل المحادثة في `audit_logs` |
 | `POST` | `/api/v1/bot/cleanup-sessions` | تنظيف الجلسات المنتهية يدوياً |
+| `POST` | `/api/v1/bot/admin-notify` | إرسال إشعار للمدير عبر WA/TG (يُستخدم من V23) — Body: `{ eventType, message }` |
 | `GET` | `/api/v1/files/*` | خدمة ملفات الموظفين |
+
+### تحميل ملفات الورك فلو — تحتاج جلسة admin
+
+| الطريقة | المسار | الوصف |
+|---------|--------|-------|
+| `GET` | `/api/v1/bot/workflow-v22` | تحميل ملف ورك فلو V22 (واتساب فقط) |
+| `GET` | `/api/v1/bot/workflow-v23` | تحميل ملف ورك فلو V23 (واتساب + تلغرام) |
 
 ### مجموعة إدارة النظام
 
@@ -538,8 +548,12 @@ script/build.ts يُشغَّل بـ tsx
 
 > **تنبيه مهم:** بعد كل إعادة نشر، قد يتغير الـ slug في الرابط (مثلاً `alsid2225` → `alsid2227`). يجب تحديث:
 > 1. ملف `docs/workflows/Sidawi_AI_Health_V22.json`
-> 2. ملف `README.md`
-> 3. ملف `replit.md`
+> 2. ملف `docs/workflows/Sidawi_AI_Health_V23.json`
+> 3. ملف `README.md`
+> 4. ملف `replit.md`
+>
+> **ملاحظة:** يمكن تحميل ملفات الورك فلو المُحدَّثة مباشرةً من التطبيق بعد النشر:
+> **الإعدادات → تبويب الإشعارات → روابط التحميل**
 
 ---
 

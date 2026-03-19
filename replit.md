@@ -97,6 +97,7 @@ When `api_keys` table is empty, login allowed without key. `GET /api/auth/setup-
 - `POST /api/v1/bot/cleanup-sessions` — Manually clean up timed-out bot sessions
 - `POST /api/v1/bot/admin-notify` — **Send admin notification** (used by V23 workflow for alerts/reports). Reads `admin_notification_phone`, `whatsapp_gateway_url/token`, `telegram_bot_token`, `telegram_notification_chat_id` from settings. Body: `{ eventType, message }`. Sends to both WA+TG if configured.
 - `GET /api/v1/files/:path` — Serve employee files protected by API key
+- `GET /api/v1/bot/workflow-v22` — Download updated V22 workflow JSON (admin session required)
 - `GET /api/v1/bot/workflow-v23` — Download updated V23 workflow JSON (admin session required)
 
 ## n8n Workflow
@@ -117,11 +118,19 @@ When `api_keys` table is empty, login allowed without key. `GET /api/auth/setup-
 6. Custom Excel: call `export_excel_tool` with optional filters (status, category, gender, employmentStatus, assignedWork, search) and optional columns param
 7. Out of scope: "أنا متخصص في بيانات موظفي المديرية فقط."
 
-### V23 Admin Notifications (automatic from n8n):
-The V23 workflow sends automatic admin alerts via `POST /api/v1/bot/admin-notify` for 3 events:
+### Admin Notifications — all cases:
+
+**V22 (direct WA message from n8n → gateway):**
+- `WA_Admin_Activation` — sends direct WhatsApp to admin phone (hardcoded in workflow node) on new activation. Must edit `number` field in the node to set admin's real phone number.
+
+**V23 (via `/api/v1/bot/admin-notify` API):**
 - `Admin_Error_Alert` — when the verification service fails (eventType: `error`)
 - `Admin_Unauthorized_Alert` — when unauthorized access attempt (eventType: `unauthorized`)
+- `Admin_Activation_Alert` — when new bot activation (eventType: `activation`)
 - `Admin_Cleanup_Report` — hourly session cleanup report (eventType: `cleanup`)
+
+**From app UI (admin manual action):**
+- `send-notification` endpoint — admin sends custom message to specific bot user from Users page
 
 Settings keys controlling notification delivery:
 - `admin_notification_phone` — Admin's WhatsApp phone number (digits only, e.g. `9671XXXXXXXXX`)
