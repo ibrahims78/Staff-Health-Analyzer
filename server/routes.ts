@@ -254,7 +254,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.get("/api/auth/setup-status", async (_req, res) => {
     try {
       const keys = await storage.getApiKeys();
-      res.json({ apiKeyRequired: keys.length > 0 });
+      const humanKeys = keys.filter((k) => k.keyType === "human" && k.isActive);
+      res.json({ apiKeyRequired: humanKeys.length > 0 });
     } catch {
       res.json({ apiKeyRequired: false });
     }
@@ -265,11 +266,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const { username, apiKey } = req.body;
 
     // ── Step 1: Validate API Key before anything else ──────────────────────
+    // Only required if there are active human-type keys in the system.
+    // Machine keys (used by n8n) do NOT trigger this requirement.
     try {
       const allKeys = await storage.getApiKeys();
+      const humanKeys = allKeys.filter((k) => k.keyType === "human" && k.isActive);
 
-      // Bootstrap mode: if no API keys exist yet, allow login so admin can create the first key
-      if (allKeys.length > 0) {
+      if (humanKeys.length > 0) {
         if (!apiKey || typeof apiKey !== "string" || !apiKey.trim()) {
           return res.status(401).json({ message: "مفتاح API مطلوب للدخول إلى النظام." });
         }
