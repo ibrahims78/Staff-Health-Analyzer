@@ -361,15 +361,30 @@ GET /api/v1/bot/generate-word-link?nationalId=010XXXXXXXX
 - اسم الملف: `بطاقة_{nationalId}_{YYYYMMDD}_{HHmmss}.docx`
 - الرابط المُعاد يحتوي على مفتاح API للوصول المباشر
 
-### 6.4 تصدير Excel
+### 6.4 تصدير Excel المخصص
 
 ```
-GET /api/v1/bot/generate-excel-link
+GET /api/v1/bot/generate-custom-excel
 ```
 
-- يُصدّر جميع الموظفين غير المحذوفين
+**معاملات الفلترة (كلها اختيارية):**
+
+| المعامل | الوصف |
+|---------|-------|
+| `status` | وضع العامل (على رأس عمله / إجازة / نقل...) |
+| `category` | الفئة (طبي / تمريض / إداري / تقني...) |
+| `gender` | الجنس (ذكر / أنثى) |
+| `employmentStatus` | نوع التوظيف (دائم / مؤقت / عقد) |
+| `assignedWork` | العمل المكلف به |
+| `search` | بحث نصي بالاسم أو الرقم الوطني أو الجوال |
+| `columns` | أعمدة مختارة مفصولة بفاصلة |
+| `title` | عنوان مخصص للملف |
+
+- إذا لم يُحدَّد أي معامل: يُصدَّر جميع الموظفين بجميع الأعمدة
 - يُحفظ في `storage/uploads/excel_exports/`
-- اسم الملف: `تقرير_الموظفين_{YYYYMMDD}_{HHmmss}.xlsx`
+- اسم الملف: `تقرير_مخصص_{YYYYMMDD}_{HHmmss}.xlsx`
+
+> **ملاحظة:** النقطة القديمة `GET /api/v1/bot/generate-excel-link` لا تزال موجودة للتوافق العكسي وتُصدِّر دائماً جميع الموظفين بجميع الأعمدة.
 
 ---
 
@@ -436,7 +451,8 @@ GET /api/v1/bot/generate-excel-link
 | `POST` | `/api/v1/bot/get-all-data` | بيانات موظف بحسب رقم الهاتف |
 | `GET` | `/api/v1/bot/master-query` | قاعدة البيانات كاملة للذكاء الاصطناعي |
 | `GET` | `/api/v1/bot/generate-word-link` | توليد بطاقة Word + رابط |
-| `GET` | `/api/v1/bot/generate-excel-link` | تصدير Excel + رابط |
+| `GET` | `/api/v1/bot/generate-excel-link` | تصدير Excel كامل + رابط (قديمة) |
+| `GET` | `/api/v1/bot/generate-custom-excel` | تصدير Excel مخصص بفلاتر وأعمدة + رابط |
 | `GET` | `/api/v1/files/*` | خدمة ملفات الموظفين |
 
 ### مجموعة إدارة النظام

@@ -72,6 +72,7 @@ if (keyRecord.keyType === "machine" && req.path === "/api/auth/login") → 403 F
 | `GET /api/v1/bot/master-query` | ✅ | machine |
 | `GET /api/v1/bot/generate-word-link` | ✅ | machine |
 | `GET /api/v1/bot/generate-excel-link` | ✅ | machine |
+| `GET /api/v1/bot/generate-custom-excel` | ✅ | machine |
 | `GET /api/v1/files/*` | ✅ | machine |
 | `/api/auth/login` | human فقط | machine محظور |
 | جميع مسارات `/api/*` الأخرى | جلسة متصفح | — |
