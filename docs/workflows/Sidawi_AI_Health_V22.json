@@ -8,7 +8,7 @@
         "options": {}
       },
       "id": "e8ee80c7-d96e-4b8e-bb63-a5e684107830",
-      "name": "Sidawi_WH",
+      "name": "Sidawi_Health_WH",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
@@ -460,7 +460,7 @@
   ],
   "pinData": {},
   "connections": {
-    "Sidawi_WH": {
+    "Sidawi_Health_WH": {
       "main": [
         [
           {
