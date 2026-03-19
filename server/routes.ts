@@ -2366,6 +2366,92 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // ─── GET /api/v1/bot/stats ─────────────────────────────────────────────────
+  // إحصاءات سريعة عن الموظفين للبوت (عدد، توزيع الحالات، الفئات، الجنس)
+  app.get("/api/v1/bot/stats", authenticateMachineAPI, async (_req, res) => {
+    try {
+      const employees = await storage.getEmployees(false, 1, 100000, true, true);
+      const total = employees.length;
+
+      const byStatus: Record<string, number> = {};
+      const byCategory: Record<string, number> = {};
+      const byGender: Record<string, number> = {};
+      const byEmploymentStatus: Record<string, number> = {};
+
+      for (const e of employees) {
+        byStatus[e.currentStatus] = (byStatus[e.currentStatus] || 0) + 1;
+        byCategory[e.category] = (byCategory[e.category] || 0) + 1;
+        byGender[e.gender] = (byGender[e.gender] || 0) + 1;
+        byEmploymentStatus[e.employmentStatus] = (byEmploymentStatus[e.employmentStatus] || 0) + 1;
+      }
+
+      res.json({ total, byStatus, byCategory, byGender, byEmploymentStatus, generatedAt: new Date() });
+    } catch (err) {
+      console.error("[Bot stats] Error:", err);
+      res.status(500).json({ message: "خطأ في جلب الإحصاءات" });
+    }
+  });
+
+  // ─── POST /api/v1/bot/log-conversation ─────────────────────────────────────
+  // تسجيل محادثة البوت في سجل التدقيق للمراجعة لاحقاً
+  app.post("/api/v1/bot/log-conversation", authenticateMachineAPI, async (req, res) => {
+    try {
+      const { phoneNumber, source, userMessage, botResponse } = req.body;
+      if (!phoneNumber || !userMessage) {
+        return res.status(400).json({ success: false, message: "phoneNumber و userMessage مطلوبان" });
+      }
+      await storage.createAuditLog({
+        userId: null,
+        action: "BOT_CONVERSATION",
+        entityType: "BOT_USER",
+        entityId: String(phoneNumber),
+        newValues: {
+          source: source || "unknown",
+          userMessage: String(userMessage).substring(0, 500),
+          botResponse: String(botResponse || "").substring(0, 1000),
+          timestamp: new Date().toISOString(),
+        },
+      });
+      res.json({ success: true });
+    } catch (err) {
+      console.error("[Bot log-conversation] Error:", err);
+      res.status(500).json({ success: false, message: "خطأ في تسجيل المحادثة" });
+    }
+  });
+
+  // ─── POST /api/v1/bot/cleanup-sessions ─────────────────────────────────────
+  // تنظيف الجلسات المنتهية يدوياً ويُستخدم من ورك فلو الجدولة في n8n
+  app.post("/api/v1/bot/cleanup-sessions", authenticateMachineAPI, async (_req, res) => {
+    try {
+      const TIMEOUT_MS = 5 * 60 * 1000;
+      const botUsers = await storage.getBotUsers();
+      const cutoff = new Date(Date.now() - TIMEOUT_MS);
+
+      let cleaned = 0;
+      for (const user of botUsers) {
+        if (user.isBotActive && user.lastInteraction && new Date(user.lastInteraction) < cutoff) {
+          await storage.updateBotUser(user.id, {
+            isBotActive: false,
+            autoDeactivationNotified: true,
+          });
+          cleaned++;
+        }
+      }
+
+      const remaining = botUsers.filter(u => u.isBotActive).length - cleaned;
+      res.json({
+        success: true,
+        cleaned,
+        totalUsers: botUsers.length,
+        activeAfterCleanup: Math.max(0, remaining),
+        cleanedAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error("[Bot cleanup-sessions] Error:", err);
+      res.status(500).json({ success: false, message: "خطأ في تنظيف الجلسات" });
+    }
+  });
+
   // ─── Background Cron: Deactivate inactive bot sessions every 60 seconds ───
   const INACTIVITY_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
   setInterval(async () => {

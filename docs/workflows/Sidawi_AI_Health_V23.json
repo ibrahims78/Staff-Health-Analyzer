@@ -1,0 +1,984 @@
+{
+  "name": "Sidawi AI Health V23 - Multi-Channel Pro",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sidawi-health-v23-wa",
+        "options": {}
+      },
+      "id": "bb000001-0001-0001-0001-000000000001",
+      "name": "WA_Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-3200, -200],
+      "webhookId": "sidawi-health-v23-whatsapp"
+    },
+    {
+      "parameters": {
+        "updates": ["message"],
+        "additionalFields": {}
+      },
+      "id": "bb000001-0001-0001-0001-000000000002",
+      "name": "TG_Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [-3200, -620],
+      "credentials": {
+        "telegramApi": {
+          "id": "TELEGRAM_CREDENTIAL_ID",
+          "name": "Telegram API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "minutesInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "bb000001-0001-0001-0001-000000000003",
+      "name": "Schedule_Cleanup_Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-3200, 600]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "wa-assign-from",
+              "name": "from",
+              "value": "={{ $json.body.from }}",
+              "type": "string"
+            },
+            {
+              "id": "wa-assign-content",
+              "name": "content",
+              "value": "={{ $json.body.content }}",
+              "type": "string"
+            },
+            {
+              "id": "wa-assign-source",
+              "name": "source",
+              "value": "whatsapp",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "bb000001-0001-0001-0001-000000000004",
+      "name": "Normalize_WA",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-2880, -200]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "tg-assign-from",
+              "name": "from",
+              "value": "={{ String($json.message.chat.id) }}",
+              "type": "string"
+            },
+            {
+              "id": "tg-assign-content",
+              "name": "content",
+              "value": "={{ $json.message.text ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "tg-assign-source",
+              "name": "source",
+              "value": "telegram",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "bb000001-0001-0001-0001-000000000005",
+      "name": "Normalize_TG",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-2880, -620]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://employee-management-system-ai-chat--alsid2225.replit.app/api/v1/bot/check-auth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "3477e2bd6616a95eb2dcbb3a9e39b663fddab5a90fe7d71cdd45a7b34040fca4"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "phoneNumber",
+              "value": "={{ $json.from }}"
+            },
+            {
+              "name": "activationCode",
+              "value": "={{ $json.content }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "bb000001-0001-0001-0001-000000000006",
+      "name": "Verify_Identity",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [-2560, -410],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// ─── Restore_Context: يدمج بيانات المصدر مع نتيجة التحقق ───────────────────\n// هذا الـ node يُعيد ربط حقلَي source و from اللذَين يُفقَدان بعد استدعاء HTTP\nconst authResp = $input.item.json;\n\nlet source = 'unknown';\nlet from = '';\nlet content = '';\n\ntry {\n  const wa = $('Normalize_WA').item.json;\n  source = wa.source;\n  from = wa.from;\n  content = wa.content;\n} catch (_e1) {\n  try {\n    const tg = $('Normalize_TG').item.json;\n    source = tg.source;\n    from = tg.from;\n    content = tg.content;\n  } catch (_e2) {\n    // fallback – لا يجب الوصول هنا في الظروف الطبيعية\n  }\n}\n\nreturn [{\n  json: {\n    ...authResp,\n    source,\n    from,\n    content\n  }\n}];"
+      },
+      "id": "bb000001-0001-0001-0001-000000000007",
+      "name": "Restore_Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-2240, -410]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "err-check-001",
+              "leftValue": "={{ typeof $json.error }}",
+              "rightValue": "object",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "bb000001-0001-0001-0001-000000000008",
+      "name": "Check_Service_Error",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-1920, -410]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "src-err-001",
+              "leftValue": "={{ $json.source }}",
+              "rightValue": "whatsapp",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "bb000001-0001-0001-0001-000000000009",
+      "name": "Source_Error_Router",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-1600, -210]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://172.17.0.1:8082/send-text",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "number",
+              "value": "={{ $json.from }}"
+            },
+            {
+              "name": "message",
+              "value": "⚠️ عذراً، النظام غير متاح حالياً بسبب خطأ تقني.\nيرجى المحاولة مرة أخرى بعد دقيقتين.\nإذا استمرت المشكلة، تواصل مع مسؤول النظام."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "bb000001-0001-0001-0001-000000000010",
+      "name": "WA_Service_Error",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [-1280, -320],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $json.from }}",
+        "text": "⚠️ عذراً، النظام غير متاح حالياً بسبب خطأ تقني.\nيرجى المحاولة مرة أخرى بعد دقيقتين.\nإذا استمرت المشكلة، تواصل مع مسؤول النظام.",
+        "additionalFields": {}
+      },
+      "id": "bb000001-0001-0001-0001-000000000011",
+      "name": "TG_Service_Error",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [-1280, -110],
+      "continueOnFail": true,
+      "credentials": {
+        "telegramApi": {
+          "id": "TELEGRAM_CREDENTIAL_ID",
+          "name": "Telegram API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "ADMIN_TELEGRAM_CHAT_ID",
+        "text": "=🚨 تنبيه: خطأ في خدمة التحقق\n\n⏰ الوقت: {{ new Date().toLocaleString('ar-SA') }}\n📡 المصدر: {{ $json.source }}\n📞 المُرسِل: {{ $json.from }}\n❌ الخطأ: {{ $json.error?.message ?? 'خطأ غير معروف' }}\n\n⚠️ يُرجى مراجعة السيرفر فوراً.",
+        "additionalFields": {}
+      },
+      "id": "bb000001-0001-0001-0001-000000000012",
+      "name": "Admin_Error_Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [-1600, 50],
+      "continueOnFail": true,
+      "credentials": {
+        "telegramApi": {
+          "id": "TELEGRAM_CREDENTIAL_ID",
+          "name": "Telegram API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2 },
+                "conditions": [
+                  {
+                    "id": "route-act-001",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "activated",
+                    "operator": { "type": "string", "operation": "equals", "name": "filter.operator.equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "تفعيل"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2 },
+                "conditions": [
+                  {
+                    "id": "route-deact-001",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "deactivated",
+                    "operator": { "type": "string", "operation": "equals", "name": "filter.operator.equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "إيقاف يدوي"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2 },
+                "conditions": [
+                  {
+                    "id": "route-autodeact-001",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "auto_deactivated",
+                    "operator": { "type": "string", "operation": "equals", "name": "filter.operator.equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "إيقاف تلقائي"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2 },
+                "conditions": [
+                  {
+                    "id": "route-msg-001",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "message",
+                    "operator": { "type": "string", "operation": "equals", "name": "filter.operator.equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "رسالة للذكاء"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2 },
+                "conditions": [
+                  {
+                    "id": "route-unauth-001",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "unauthorized",
+                    "operator": { "type": "string", "operation": "equals", "name": "filter.operator.equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "غير مصرح"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "none"
+        }
+      },
+      "id": "bb000001-0001-0001-0001-000000000013",
+      "name": "Route_by_Action",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [-1600, -410]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict", "version": 2 },
+          "conditions": [
+            {
+              "id": "disp-welcome-001",
+              "leftValue": "={{ $json.source }}",
+              "rightValue": "whatsapp",
+              "operator": { "type": "string", "operation": "equals", "name": "filter.operator.equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "bb000001-0001-0001-0001-000000000014",
+      "name": "Dispatch_Welcome",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-1280, -710]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://172.17.0.1:8082/send-text",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "number", "value": "={{ $json.from }}" },
+            { "name": "message", "value": "=مرحباً {{ $json.full_name }} 👋\n\nتم تفعيل البوت بنجاح عبر WhatsApp! يمكنك الآن طرح أي سؤال عن بيانات الموظفين في مديرية الصحة.\n\n💡 للإيقاف في أي وقت، أرسل كود الإيقاف: {{ $json.deactivation_code }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "bb000001-0001-0001-0001-000000000015",
+      "name": "WA_Welcome",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [-960, -820],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $json.from }}",
+        "text": "=مرحباً {{ $json.full_name }} 👋\n\nتم تفعيل البوت بنجاح عبر Telegram! يمكنك الآن طرح أي سؤال عن بيانات الموظفين في مديرية الصحة.\n\n💡 للإيقاف في أي وقت، أرسل كود الإيقاف: {{ $json.deactivation_code }}",
+        "additionalFields": {}
+      },
+      "id": "bb000001-0001-0001-0001-000000000016",
+      "name": "TG_Welcome",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [-960, -630],
+      "continueOnFail": true,
+      "credentials": {
+        "telegramApi": {
+          "id": "TELEGRAM_CREDENTIAL_ID",
+          "name": "Telegram API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict", "version": 2 },
+          "conditions": [
+            {
+              "id": "disp-goodbye-001",
+              "leftValue": "={{ $json.source }}",
+              "rightValue": "whatsapp",
+              "operator": { "type": "string", "operation": "equals", "name": "filter.operator.equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "bb000001-0001-0001-0001-000000000017",
+      "name": "Dispatch_Goodbye",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-1280, -510]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://172.17.0.1:8082/send-text",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "number", "value": "={{ $json.from }}" },
+            { "name": "message", "value": "تم إيقاف البوت ✋\n\nشكراً لاستخدامك النظام. لن يتم الرد على رسائلك حتى تُرسل كود التفعيل مجدداً." }
+          ]
+        },
+        "options": {}
+      },
+      "id": "bb000001-0001-0001-0001-000000000018",
+      "name": "WA_Goodbye",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [-960, -560],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $json.from }}",
+        "text": "تم إيقاف البوت ✋\n\nشكراً لاستخدامك النظام. لن يتم الرد على رسائلك حتى تُرسل كود التفعيل مجدداً.",
+        "additionalFields": {}
+      },
+      "id": "bb000001-0001-0001-0001-000000000019",
+      "name": "TG_Goodbye",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [-960, -400],
+      "continueOnFail": true,
+      "credentials": {
+        "telegramApi": {
+          "id": "TELEGRAM_CREDENTIAL_ID",
+          "name": "Telegram API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict", "version": 2 },
+          "conditions": [
+            {
+              "id": "disp-timeout-001",
+              "leftValue": "={{ $json.source }}",
+              "rightValue": "whatsapp",
+              "operator": { "type": "string", "operation": "equals", "name": "filter.operator.equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "bb000001-0001-0001-0001-000000000020",
+      "name": "Dispatch_AutoTimeout",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-1280, -310]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://172.17.0.1:8082/send-text",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "number", "value": "={{ $json.from }}" },
+            { "name": "message", "value": "⏰ تم إيقاف البوت تلقائياً بسبب عدم النشاط لمدة 5 دقائق.\n\nأرسل كود التفعيل لإعادة تشغيله." }
+          ]
+        },
+        "options": {}
+      },
+      "id": "bb000001-0001-0001-0001-000000000021",
+      "name": "WA_AutoTimeout",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [-960, -330],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $json.from }}",
+        "text": "⏰ تم إيقاف البوت تلقائياً بسبب عدم النشاط لمدة 5 دقائق.\n\nأرسل كود التفعيل لإعادة تشغيله.",
+        "additionalFields": {}
+      },
+      "id": "bb000001-0001-0001-0001-000000000022",
+      "name": "TG_AutoTimeout",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [-960, -180],
+      "continueOnFail": true,
+      "credentials": {
+        "telegramApi": {
+          "id": "TELEGRAM_CREDENTIAL_ID",
+          "name": "Telegram API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "ADMIN_TELEGRAM_CHAT_ID",
+        "text": "=🔐 محاولة وصول غير مصرح به\n\n⏰ الوقت: {{ new Date().toLocaleString('ar-SA') }}\n📡 المصدر: {{ $json.source }}\n📞 المُعرِّف: {{ $json.from }}\n🔑 الكود المُرسَل: {{ $json.content }}\n\n⚠️ هذا المستخدم غير مسجل في النظام أو أرسل كوداً خاطئاً.",
+        "additionalFields": {}
+      },
+      "id": "bb000001-0001-0001-0001-000000000023",
+      "name": "Admin_Unauthorized_Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [-1280, -110],
+      "continueOnFail": true,
+      "credentials": {
+        "telegramApi": {
+          "id": "TELEGRAM_CREDENTIAL_ID",
+          "name": "Telegram API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.content }}",
+        "options": {
+          "systemMessage": "=أنت 'النظام الخبير للإدارة التقنية والذاتية' بمديرية الصحة. الموظف المصرَّح له الذي يتواصل معك الآن هو: {{ $json.full_name }}.\n\n=====================================\nقواعد صارمة - لا استثناءات مطلقاً\n=====================================\n\n[1] استدعاء الأداة إلزامي:\n- لكل استفسار عن موظف أو إحصاءات أو مستندات، يجب استدعاء الأداة المناسبة أولاً، قبل أي رد.\n- للإحصاءات العامة: استخدم get_employee_stats.\n- للبيانات التفصيلية: استخدم fetch_employee_database.\n- للوثيقة Word: استخدم generate_word_link.\n- لملف Excel: استخدم export_excel_tool.\n- يُحظر تماماً استخدام أي معلومة من معرفتك التدريبية.\n\n[2] الموظف غير الموجود:\n- إذا بحثت ولم تجد الموظف: \"لا يوجد موظف بهذا الاسم أو الرقم في قاعدة بيانات المديرية.\"\n- لا تضف أي كلام إضافي. لا تخمن.\n\n[3] المستندات:\n- المستندات تُعرض فقط من حقل direct_url الوارد في بيانات الموظف.\n- إذا كان حقل المستندات فارغاً: \"لا توجد مستندات مرفقة بسجل هذا الموظف.\"\n\n[4] ملف Word:\n- استخدم generate_word_link عند الطلب الصريح.\n- مرّر nationalId أولاً من fetch_employee_database.\n- أرسل رابط downloadUrl للمستخدم مباشرةً.\n\n[5] نطاق الردود:\n- اللغة العربية الفصيحة دائماً، مختصرة وواضحة.\n- إذا كان السؤال خارج نطاق بيانات موظفي المديرية:\n  \"أنا متخصص في بيانات موظفي المديرية فقط، لا أستطيع المساعدة في هذا الموضوع.\""
+        }
+      },
+      "id": "bb000001-0001-0001-0001-000000000024",
+      "name": "AI_Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [-1280, 150]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "bb000001-0001-0001-0001-000000000025",
+      "name": "Gemini_Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [-1280, 450],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "Hxp1njnkn8szDJPn",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Restore_Context').item.json.from }}_{{ $('Restore_Context').item.json.source }}",
+        "contextWindowLength": 10
+      },
+      "id": "bb000001-0001-0001-0001-000000000026",
+      "name": "Memory_Window",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [-1500, 450]
+    },
+    {
+      "parameters": {
+        "toolDescription": "أداة الوصول الشاملة لقاعدة بيانات المديرية. تعيد كافة سجلات الموظفين، الأقسام، وروابط المستندات المباشرة. استخدمها للرد على أي استفسار معلوماتي تفصيلي عن موظف محدد.",
+        "url": "https://employee-management-system-ai-chat--alsid2225.replit.app/api/v1/bot/master-query?_t=3477e2bd6616a95eb2dcbb3a9e39b663fddab5a90fe7d71cdd45a7b34040fca4",
+        "sendHeaders": true,
+        "parametersHeaders": {
+          "values": [
+            {
+              "name": "x-api-key",
+              "valueProvider": "fieldValue",
+              "value": "3477e2bd6616a95eb2dcbb3a9e39b663fddab5a90fe7d71cdd45a7b34040fca4"
+            }
+          ]
+        }
+      },
+      "id": "bb000001-0001-0001-0001-000000000027",
+      "name": "fetch_employee_database",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [-1060, 600]
+    },
+    {
+      "parameters": {
+        "toolDescription": "أداة توليد بطاقة الموظف كملف Word (docx) وإرجاع رابط تنزيل مباشر. استخدمها عندما يطلب الموظف ملفه الوظيفي أو وثيقته الرسمية. يجب تمرير: nationalId (الرقم الوطني) أو name (اسم الموظف).",
+        "url": "https://employee-management-system-ai-chat--alsid2225.replit.app/api/v1/bot/generate-word-link",
+        "sendQuery": true,
+        "parametersQuery": {
+          "values": [
+            { "name": "nationalId", "valueProvider": "modelOptional" },
+            { "name": "name", "valueProvider": "modelOptional" }
+          ]
+        },
+        "sendHeaders": true,
+        "parametersHeaders": {
+          "values": [
+            {
+              "name": "x-api-key",
+              "valueProvider": "fieldValue",
+              "value": "3477e2bd6616a95eb2dcbb3a9e39b663fddab5a90fe7d71cdd45a7b34040fca4"
+            }
+          ]
+        }
+      },
+      "id": "bb000001-0001-0001-0001-000000000028",
+      "name": "generate_word_link",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [-880, 600]
+    },
+    {
+      "parameters": {
+        "toolDescription": "أداة تصدير بيانات جميع الموظفين كملف Excel (xlsx) وإرجاع رابط تنزيل مباشر. استخدمها عندما يطلب المستخدم بيانات الموظفين كملف إكسل أو جدول بيانات. لا تحتاج أي معاملات إضافية.",
+        "url": "https://employee-management-system-ai-chat--alsid2225.replit.app/api/v1/bot/generate-excel-link",
+        "sendHeaders": true,
+        "parametersHeaders": {
+          "values": [
+            {
+              "name": "x-api-key",
+              "valueProvider": "fieldValue",
+              "value": "3477e2bd6616a95eb2dcbb3a9e39b663fddab5a90fe7d71cdd45a7b34040fca4"
+            }
+          ]
+        }
+      },
+      "id": "bb000001-0001-0001-0001-000000000029",
+      "name": "export_excel_tool",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [-700, 600]
+    },
+    {
+      "parameters": {
+        "toolDescription": "أداة الإحصاءات السريعة لمديرية الصحة. تُعيد: إجمالي عدد الموظفين، توزيعهم حسب الحالة الوظيفية (على رأس عمله، إجازة، نقل...)، حسب الفئة، حسب الجنس، وحسب نوع التوظيف. استخدمها عند طلب أي إحصاء عام دون الحاجة لتفاصيل موظفين بعينهم.",
+        "url": "https://employee-management-system-ai-chat--alsid2225.replit.app/api/v1/bot/stats",
+        "sendHeaders": true,
+        "parametersHeaders": {
+          "values": [
+            {
+              "name": "x-api-key",
+              "valueProvider": "fieldValue",
+              "value": "3477e2bd6616a95eb2dcbb3a9e39b663fddab5a90fe7d71cdd45a7b34040fca4"
+            }
+          ]
+        }
+      },
+      "id": "bb000001-0001-0001-0001-000000000030",
+      "name": "get_employee_stats",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [-520, 600]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict", "version": 2 },
+          "conditions": [
+            {
+              "id": "disp-ai-001",
+              "leftValue": "={{ $('Restore_Context').item.json.source }}",
+              "rightValue": "whatsapp",
+              "operator": { "type": "string", "operation": "equals", "name": "filter.operator.equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "bb000001-0001-0001-0001-000000000031",
+      "name": "Dispatch_AI_Response",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-960, 150]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://172.17.0.1:8082/send-text",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "number", "value": "={{ $('Restore_Context').item.json.from }}" },
+            { "name": "message", "value": "={{ $json.output }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "bb000001-0001-0001-0001-000000000032",
+      "name": "WA_AI_Output",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [-640, 50],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $('Restore_Context').item.json.from }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {}
+      },
+      "id": "bb000001-0001-0001-0001-000000000033",
+      "name": "TG_AI_Output",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [-640, 270],
+      "continueOnFail": true,
+      "credentials": {
+        "telegramApi": {
+          "id": "TELEGRAM_CREDENTIAL_ID",
+          "name": "Telegram API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://employee-management-system-ai-chat--alsid2225.replit.app/api/v1/bot/log-conversation",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "3477e2bd6616a95eb2dcbb3a9e39b663fddab5a90fe7d71cdd45a7b34040fca4"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "phoneNumber", "value": "={{ $('Restore_Context').item.json.from }}" },
+            { "name": "source", "value": "={{ $('Restore_Context').item.json.source }}" },
+            { "name": "userMessage", "value": "={{ $('Restore_Context').item.json.content }}" },
+            { "name": "botResponse", "value": "={{ $('AI_Agent').item.json.output }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "bb000001-0001-0001-0001-000000000034",
+      "name": "Log_Conversation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [-320, 160],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://employee-management-system-ai-chat--alsid2225.replit.app/api/v1/bot/cleanup-sessions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "3477e2bd6616a95eb2dcbb3a9e39b663fddab5a90fe7d71cdd45a7b34040fca4"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "bb000001-0001-0001-0001-000000000035",
+      "name": "Call_Cleanup_API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [-2880, 600],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "ADMIN_TELEGRAM_CHAT_ID",
+        "text": "=🧹 تقرير التنظيف التلقائي - {{ new Date().toLocaleString('ar-SA') }}\n\n✅ جلسات مُنظَّفة: {{ $json.cleaned }}\n👥 إجمالي المستخدمين: {{ $json.totalUsers }}\n🟢 نشطون بعد التنظيف: {{ $json.activeAfterCleanup }}\n\n⏰ وقت التنفيذ: {{ $json.cleanedAt }}",
+        "additionalFields": {}
+      },
+      "id": "bb000001-0001-0001-0001-000000000036",
+      "name": "Admin_Cleanup_Report",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [-2560, 600],
+      "continueOnFail": true,
+      "credentials": {
+        "telegramApi": {
+          "id": "TELEGRAM_CREDENTIAL_ID",
+          "name": "Telegram API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "WA_Webhook": {
+      "main": [[{ "node": "Normalize_WA", "type": "main", "index": 0 }]]
+    },
+    "TG_Trigger": {
+      "main": [[{ "node": "Normalize_TG", "type": "main", "index": 0 }]]
+    },
+    "Schedule_Cleanup_Trigger": {
+      "main": [[{ "node": "Call_Cleanup_API", "type": "main", "index": 0 }]]
+    },
+    "Normalize_WA": {
+      "main": [[{ "node": "Verify_Identity", "type": "main", "index": 0 }]]
+    },
+    "Normalize_TG": {
+      "main": [[{ "node": "Verify_Identity", "type": "main", "index": 0 }]]
+    },
+    "Verify_Identity": {
+      "main": [[{ "node": "Restore_Context", "type": "main", "index": 0 }]]
+    },
+    "Restore_Context": {
+      "main": [[{ "node": "Check_Service_Error", "type": "main", "index": 0 }]]
+    },
+    "Check_Service_Error": {
+      "main": [
+        [
+          { "node": "Source_Error_Router", "type": "main", "index": 0 },
+          { "node": "Admin_Error_Alert", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Route_by_Action", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Source_Error_Router": {
+      "main": [
+        [{ "node": "WA_Service_Error", "type": "main", "index": 0 }],
+        [{ "node": "TG_Service_Error", "type": "main", "index": 0 }]
+      ]
+    },
+    "Route_by_Action": {
+      "main": [
+        [{ "node": "Dispatch_Welcome", "type": "main", "index": 0 }],
+        [{ "node": "Dispatch_Goodbye", "type": "main", "index": 0 }],
+        [{ "node": "Dispatch_AutoTimeout", "type": "main", "index": 0 }],
+        [{ "node": "AI_Agent", "type": "main", "index": 0 }],
+        [{ "node": "Admin_Unauthorized_Alert", "type": "main", "index": 0 }]
+      ]
+    },
+    "Dispatch_Welcome": {
+      "main": [
+        [{ "node": "WA_Welcome", "type": "main", "index": 0 }],
+        [{ "node": "TG_Welcome", "type": "main", "index": 0 }]
+      ]
+    },
+    "Dispatch_Goodbye": {
+      "main": [
+        [{ "node": "WA_Goodbye", "type": "main", "index": 0 }],
+        [{ "node": "TG_Goodbye", "type": "main", "index": 0 }]
+      ]
+    },
+    "Dispatch_AutoTimeout": {
+      "main": [
+        [{ "node": "WA_AutoTimeout", "type": "main", "index": 0 }],
+        [{ "node": "TG_AutoTimeout", "type": "main", "index": 0 }]
+      ]
+    },
+    "AI_Agent": {
+      "main": [[{ "node": "Dispatch_AI_Response", "type": "main", "index": 0 }]]
+    },
+    "Dispatch_AI_Response": {
+      "main": [
+        [{ "node": "WA_AI_Output", "type": "main", "index": 0 }],
+        [{ "node": "TG_AI_Output", "type": "main", "index": 0 }]
+      ]
+    },
+    "WA_AI_Output": {
+      "main": [[{ "node": "Log_Conversation", "type": "main", "index": 0 }]]
+    },
+    "TG_AI_Output": {
+      "main": [[{ "node": "Log_Conversation", "type": "main", "index": 0 }]]
+    },
+    "Call_Cleanup_API": {
+      "main": [[{ "node": "Admin_Cleanup_Report", "type": "main", "index": 0 }]]
+    },
+    "Gemini_Model": {
+      "ai_languageModel": [[{ "node": "AI_Agent", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "Memory_Window": {
+      "ai_memory": [[{ "node": "AI_Agent", "type": "ai_memory", "index": 0 }]]
+    },
+    "fetch_employee_database": {
+      "ai_tool": [[{ "node": "AI_Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "generate_word_link": {
+      "ai_tool": [[{ "node": "AI_Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "export_excel_tool": {
+      "ai_tool": [[{ "node": "AI_Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "get_employee_stats": {
+      "ai_tool": [[{ "node": "AI_Agent", "type": "ai_tool", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "errorWorkflow": ""
+  },
+  "versionId": "v23-multi-channel-pro-2026",
+  "meta": {
+    "instanceId": "9209d1367e21b216f13b9563bb21cb1c1fcb732cef287186a2e347fcf573779c",
+    "notes": "V23 - Multi-Channel Pro: WhatsApp + Telegram, Error Handling, Admin Alerts, Scheduled Cleanup, Conversation Logging, Stats Tool, 10-message Memory Window"
+  },
+  "tags": ["production", "multi-channel", "v23"]
+}
