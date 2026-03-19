@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2, Download, RefreshCw, Clock, ShieldAlert, Trash2, Database, AlertTriangle, CheckCircle2, Upload, FileSpreadsheet, Key, Plus, Eye, EyeOff, Copy, ToggleLeft, ToggleRight, Bot, UserRound, Workflow, Link2, Phone, ShieldCheck, Info, Globe, Bell } from "lucide-react";
+import { Loader2, Download, RefreshCw, Clock, ShieldAlert, Trash2, Database, AlertTriangle, CheckCircle2, Upload, FileSpreadsheet, Key, Plus, Eye, EyeOff, Copy, ToggleLeft, ToggleRight, Bot, UserRound, Workflow, Link2, Phone, ShieldCheck, Info, Globe, Bell, Save } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Switch } from "@/components/ui/switch";
@@ -604,6 +604,7 @@ function ImportEmployeesCard() {
 // ─── Notification Settings Card ───────────────────────────────────────────────
 function NotificationSettingsCard() {
   const { toast } = useToast();
+  const [adminPhone, setAdminPhone] = useState("");
   const [waUrl, setWaUrl] = useState("");
   const [waToken, setWaToken] = useState("");
   const [tgToken, setTgToken] = useState("");
@@ -620,6 +621,7 @@ function NotificationSettingsCard() {
   useEffect(() => {
     if (!settings) return;
     const find = (key: string) => settings.find((s: any) => s.key === key)?.value ?? "";
+    setAdminPhone(find("admin_notification_phone"));
     setWaUrl(find("whatsapp_gateway_url"));
     setWaToken(find("whatsapp_gateway_token"));
     setTgToken(find("telegram_bot_token"));
@@ -630,6 +632,7 @@ function NotificationSettingsCard() {
     setSaving(true);
     try {
       await Promise.all([
+        apiRequest("POST", "/api/settings", { key: "admin_notification_phone", value: adminPhone.trim().replace(/\D/g, "") }),
         apiRequest("POST", "/api/settings", { key: "whatsapp_gateway_url", value: waUrl.trim() }),
         apiRequest("POST", "/api/settings", { key: "whatsapp_gateway_token", value: waToken.trim() }),
         apiRequest("POST", "/api/settings", { key: "telegram_bot_token", value: tgToken.trim() }),
@@ -654,14 +657,39 @@ function NotificationSettingsCard() {
             <Bell className="h-5 w-5" />
           </div>
           <div>
-            <CardTitle className="text-xl font-bold">إعدادات الإشعارات</CardTitle>
+            <CardTitle className="text-xl font-bold">إعدادات الإشعارات التلقائية</CardTitle>
             <CardDescription>
-              أدخل بيانات بوابة واتساب وبوت تيليغرام لتفعيل إرسال الإشعارات من داخل التطبيق
+              هذه الإعدادات تُستخدم من قِبل ورك فلو n8n (V23) لإرسال إشعارات الأخطاء والتنبيهات والتقارير إلى المدير تلقائياً
             </CardDescription>
           </div>
         </div>
       </CardHeader>
       <CardContent className="pt-5 space-y-6">
+
+        {/* Admin Contact */}
+        <div className="rounded-lg border border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20 p-4 space-y-3">
+          <div className="flex items-center gap-2 text-sm font-semibold text-amber-700 dark:text-amber-400">
+            <Bell className="h-4 w-4" />
+            جهة استلام إشعارات المدير
+          </div>
+          <p className="text-xs text-muted-foreground pr-6">
+            يتلقى هذا الرقم/المعرّف جميع الإشعارات التلقائية القادمة من البوت: تنبيهات الأخطاء، محاولات الوصول غير المصرح، وتقارير التنظيف.
+          </p>
+          <div className="space-y-2 pr-6">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">رقم هاتف المدير (واتساب) — أرقام فقط بدون مسافات</label>
+              <Input
+                data-testid="input-admin-notification-phone"
+                placeholder="9671XXXXXXXXX"
+                value={adminPhone}
+                onChange={(e) => setAdminPhone(e.target.value.replace(/\D/g, ""))}
+                dir="ltr"
+                className="font-mono text-sm"
+                maxLength={20}
+              />
+            </div>
+          </div>
+        </div>
 
         {/* WhatsApp Settings */}
         <div className="space-y-3">
@@ -756,6 +784,31 @@ function NotificationSettingsCard() {
           </div>
         </div>
 
+        <div className="border-t" />
+
+        {/* Workflow Download */}
+        <div className="rounded-lg border border-indigo-500/30 bg-indigo-50/50 dark:bg-indigo-950/20 p-4 space-y-3">
+          <div className="flex items-center gap-2 text-sm font-semibold text-indigo-700 dark:text-indigo-400">
+            <Download className="h-4 w-4" />
+            ورك فلو n8n المُحدَّث (V23)
+          </div>
+          <p className="text-xs text-muted-foreground pr-6">
+            تم تحديث ملف V23 لاستخدام مسار <code className="bg-muted px-1 rounded">/api/v1/bot/admin-notify</code> بدلاً من التوكن المثبّت.
+            حمّل الملف المحدّث وأعد استيراده في n8n.
+          </p>
+          <div className="pr-6">
+            <a
+              href="/api/v1/bot/workflow-v23"
+              download="Sidawi_AI_Health_V23.json"
+              className="inline-flex items-center gap-2 text-xs font-medium text-indigo-600 dark:text-indigo-400 underline underline-offset-2 hover:text-indigo-800"
+              data-testid="link-download-workflow-v23"
+            >
+              <Download className="h-3.5 w-3.5" />
+              تحميل Sidawi_AI_Health_V23.json
+            </a>
+          </div>
+        </div>
+
         <div className="flex justify-end pt-2">
           <Button
             data-testid="button-save-notification-settings"
@@ -763,7 +816,7 @@ function NotificationSettingsCard() {
             disabled={saving}
             className="gap-2"
           >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             {saving ? "جاري الحفظ..." : "حفظ الإعدادات"}
           </Button>
         </div>

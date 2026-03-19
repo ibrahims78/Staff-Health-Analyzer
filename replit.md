@@ -95,7 +95,9 @@ When `api_keys` table is empty, login allowed without key. `GET /api/auth/setup-
 - `GET /api/v1/bot/generate-custom-excel` — Export filtered/custom-column Excel + download URL
 - `POST /api/v1/bot/log-conversation` — Log bot conversation to audit log
 - `POST /api/v1/bot/cleanup-sessions` — Manually clean up timed-out bot sessions
+- `POST /api/v1/bot/admin-notify` — **Send admin notification** (used by V23 workflow for alerts/reports). Reads `admin_notification_phone`, `whatsapp_gateway_url/token`, `telegram_bot_token`, `telegram_notification_chat_id` from settings. Body: `{ eventType, message }`. Sends to both WA+TG if configured.
 - `GET /api/v1/files/:path` — Serve employee files protected by API key
+- `GET /api/v1/bot/workflow-v23` — Download updated V23 workflow JSON (admin session required)
 
 ## n8n Workflow
 
@@ -115,9 +117,23 @@ When `api_keys` table is empty, login allowed without key. `GET /api/auth/setup-
 6. Custom Excel: call `export_excel_tool` with optional filters (status, category, gender, employmentStatus, assignedWork, search) and optional columns param
 7. Out of scope: "أنا متخصص في بيانات موظفي المديرية فقط."
 
+### V23 Admin Notifications (automatic from n8n):
+The V23 workflow sends automatic admin alerts via `POST /api/v1/bot/admin-notify` for 3 events:
+- `Admin_Error_Alert` — when the verification service fails (eventType: `error`)
+- `Admin_Unauthorized_Alert` — when unauthorized access attempt (eventType: `unauthorized`)
+- `Admin_Cleanup_Report` — hourly session cleanup report (eventType: `cleanup`)
+
+Settings keys controlling notification delivery:
+- `admin_notification_phone` — Admin's WhatsApp phone number (digits only, e.g. `9671XXXXXXXXX`)
+- `whatsapp_gateway_url` — WA gateway base URL
+- `whatsapp_gateway_token` — WA gateway Bearer token
+- `telegram_bot_token` — Telegram bot token
+- `telegram_notification_chat_id` — Telegram chat ID to receive alerts
+
 ### n8n Workflow URLs (production):
 - Update workflow JSON domain after each deployment
 - Current machine API key: stored in `api_keys` table, `key_type = 'machine'`, description `n8n`
+- Download updated V23 workflow from Settings → Notification tab → "ورك فلو n8n المُحدَّث (V23)"
 
 ### User isolation:
 - Each user gets independent conversation memory via `sessionKey = phone`

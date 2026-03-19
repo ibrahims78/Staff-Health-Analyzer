@@ -1038,6 +1038,21 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json(allSettings);
   });
 
+  // ─── GET /api/v1/bot/workflow-v23 ────────────────────────────────────────────
+  // تحميل ملف الورك فلو V23 المحدّث (فقط للمدير)
+  app.get("/api/v1/bot/workflow-v23", async (req, res) => {
+    if (req.user?.role !== 'admin') return res.status(403).send("Unauthorized");
+    try {
+      const workflowPath = path.resolve(process.cwd(), "docs/workflows/Sidawi_AI_Health_V23.json");
+      const content = await fs.readFile(workflowPath, "utf-8");
+      res.setHeader("Content-Type", "application/json");
+      res.setHeader("Content-Disposition", 'attachment; filename="Sidawi_AI_Health_V23.json"');
+      res.send(content);
+    } catch (e: any) {
+      res.status(404).json({ message: "ملف الورك فلو غير موجود" });
+    }
+  });
+
   app.post(api.settings.update.path, async (req, res) => {
     if (req.user?.role !== 'admin') return res.status(403).send("Unauthorized");
     const { key, value } = req.body;
@@ -1343,6 +1358,96 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       res.status(204).end();
     } catch (err) {
       res.status(500).json({ message: "خطأ في حذف مستخدم البوت" });
+    }
+  });
+
+  // ─── POST /api/v1/bot/admin-notify ──────────────────────────────────────────
+  // مسار مركزي لإرسال إشعارات تلقائية للمدير من ورك فلو n8n
+  // يُستدعى من الـ nodes التالية في V23:
+  //   Admin_Error_Alert | Admin_Unauthorized_Alert | Admin_Cleanup_Report
+  app.post("/api/v1/bot/admin-notify", authenticateMachineAPI, async (req, res) => {
+    try {
+      const { eventType, title, message, meta } = req.body as {
+        eventType: string;
+        title: string;
+        message: string;
+        meta?: Record<string, any>;
+      };
+
+      if (!message) {
+        return res.status(400).json({ success: false, message: "message مطلوب" });
+      }
+
+      const results: { channel: string; success: boolean; error?: string }[] = [];
+
+      // ── إرسال عبر واتساب ──────────────────────────────────────────────────
+      const adminPhone   = await storage.getSetting("admin_notification_phone");
+      const gatewayUrl   = await storage.getSetting("whatsapp_gateway_url");
+      const gatewayToken = await storage.getSetting("whatsapp_gateway_token");
+
+      if (adminPhone && gatewayUrl && gatewayToken) {
+        try {
+          const phone = String(adminPhone).replace(/\D/g, "");
+          const waRes = await fetch(String(gatewayUrl), {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${String(gatewayToken)}`,
+            },
+            body: JSON.stringify({ phone, message }),
+          });
+          if (waRes.ok) {
+            results.push({ channel: "whatsapp", success: true });
+          } else {
+            const errBody = await waRes.text();
+            results.push({ channel: "whatsapp", success: false, error: errBody || `HTTP ${waRes.status}` });
+          }
+        } catch (e: any) {
+          results.push({ channel: "whatsapp", success: false, error: e.message });
+        }
+      }
+
+      // ── إرسال عبر تيليغرام ────────────────────────────────────────────────
+      const botToken = await storage.getSetting("telegram_bot_token");
+      const chatId   = await storage.getSetting("telegram_notification_chat_id");
+
+      if (botToken && chatId) {
+        try {
+          const tgRes = await fetch(`https://api.telegram.org/bot${String(botToken)}/sendMessage`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chat_id: String(chatId), text: message }),
+          });
+          const tgBody = await tgRes.json() as any;
+          if (tgRes.ok && tgBody.ok) {
+            results.push({ channel: "telegram", success: true });
+          } else {
+            results.push({ channel: "telegram", success: false, error: tgBody?.description || `HTTP ${tgRes.status}` });
+          }
+        } catch (e: any) {
+          results.push({ channel: "telegram", success: false, error: e.message });
+        }
+      }
+
+      if (results.length === 0) {
+        return res.json({
+          success: false,
+          message: "لا توجد قنوات إشعار مهيّأة. راجع إعدادات الإشعارات في التطبيق.",
+          results: [],
+        });
+      }
+
+      const anySuccess = results.some(r => r.success);
+      console.log(`[admin-notify] eventType=${eventType} results=`, results);
+
+      res.json({
+        success: anySuccess,
+        eventType,
+        results,
+      });
+    } catch (err: any) {
+      console.error("[admin-notify] Error:", err);
+      res.status(500).json({ success: false, message: err.message || "خطأ في إرسال الإشعار" });
     }
   });
 
