@@ -12,7 +12,10 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [-480, 0],
+      "position": [
+        -480,
+        0
+      ],
       "webhookId": "sidawi-send-wa-trigger"
     },
     {
@@ -24,11 +27,11 @@
           "parameters": [
             {
               "name": "number",
-              "value": "={{ $json.number }}"
+              "value": "={{ $json.body.number }}"
             },
             {
               "name": "message",
-              "value": "={{ $json.message }}"
+              "value": "={{ $json.body.message }}"
             }
           ]
         },
@@ -38,7 +41,10 @@
       "name": "Send_to_WA_Gateway",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [-240, 0],
+      "position": [
+        -240,
+        0
+      ],
       "continueOnFail": true
     },
     {
@@ -50,7 +56,10 @@
       "name": "Respond_to_Webhook",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [0, 0]
+      "position": [
+        0,
+        0
+      ]
     }
   ],
   "connections": {
@@ -85,5 +94,9 @@
   "meta": {
     "notes": "Sidawi Send WA: يستقبل { number, message } ويُرسِل عبر بوابة واتساب المحلية. استورده في n8n واحصل على رابط الـ Webhook ثم أدخله في إعدادات النظام."
   },
-  "tags": ["helper", "whatsapp", "send"]
+  "tags": [
+    "helper",
+    "whatsapp",
+    "send"
+  ]
 }
