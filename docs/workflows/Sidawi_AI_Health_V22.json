@@ -49,8 +49,22 @@
       "name": "Verify_Identity",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
+      "continueOnFail": true,
       "position": [
         -2688,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Restore_Context: يدمج بيانات الويبهوك مع رد التحقق لضمان توفر from و phone_number دائماً\nconst authResp = $input.item.json;\nlet from = '';\ntry {\n  from = $('Sidawi_Health_WH').item.json.body.from;\n} catch(_e) {}\nreturn [{\n  json: {\n    ...authResp,\n    from: authResp.phone_number || from\n  }\n}];"
+      },
+      "id": "rc-v22-restore-context-001",
+      "name": "Restore_Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2464,
         -96
       ]
     },
@@ -182,11 +196,11 @@
           "parameters": [
             {
               "name": "number",
-              "value": "={{ $('Verify_Identity').item.json.phone_number || $('Sidawi_Health_WH').item.json.body.from }}"
+              "value": "={{ $json.from }}"
             },
             {
               "name": "message",
-              "value": "=مرحباً {{ $('Verify_Identity').item.json.full_name }} 👋\n\nتم تفعيل البوت بنجاح! يمكنك الآن طرح أي سؤال عن بيانات الموظفين في مديرية الصحة.\n\n💡 للإيقاف في أي وقت، أرسل كود الإيقاف."
+              "value": "=مرحباً {{ $json.full_name }} 👋\n\nتم تفعيل البوت بنجاح! يمكنك الآن طرح أي سؤال عن بيانات الموظفين في مديرية الصحة.\n\n💡 للإيقاف في أي وقت، أرسل كود الإيقاف."
             }
           ]
         },
@@ -196,6 +210,7 @@
       "name": "WA_Welcome",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
+      "continueOnFail": true,
       "position": [
         -1872,
         -416
@@ -210,7 +225,7 @@
           "parameters": [
             {
               "name": "number",
-              "value": "={{ $('Verify_Identity').item.json.phone_number || $('Sidawi_Health_WH').item.json.body.from }}"
+              "value": "={{ $json.from }}"
             },
             {
               "name": "message",
@@ -224,6 +239,7 @@
       "name": "WA_Goodbye",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
+      "continueOnFail": true,
       "position": [
         -1872,
         -256
@@ -238,7 +254,7 @@
           "parameters": [
             {
               "name": "number",
-              "value": "={{ $('Verify_Identity').item.json.phone_number || $('Sidawi_Health_WH').item.json.body.from }}"
+              "value": "={{ $json.from }}"
             },
             {
               "name": "message",
@@ -252,6 +268,7 @@
       "name": "WA_AutoTimeout",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
+      "continueOnFail": true,
       "position": [
         -1872,
         -112
@@ -344,7 +361,7 @@
           "parameters": [
             {
               "name": "number",
-              "value": "={{ $('Verify_Identity').item.json.phone_number || $('Sidawi_Health_WH').item.json.body.from }}"
+              "value": "={{ $('Restore_Context').item.json.from }}"
             },
             {
               "name": "message",
@@ -358,6 +375,7 @@
       "name": "WA_AI_Output",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
+      "continueOnFail": true,
       "position": [
         -1872,
         48
@@ -366,8 +384,8 @@
     {
       "parameters": {
         "sessionIdType": "customKey",
-        "sessionKey": "={{ $('Verify_Identity').item.json.phone_number || $('Sidawi_Health_WH').item.json.body.from }}",
-        "key": "={{ $('Verify_Identity').item.json.phone_number || $('Sidawi_Health_WH').item.json.body.from }}"
+        "sessionKey": "={{ $('Restore_Context').item.json.from }}",
+        "key": "={{ $('Restore_Context').item.json.from }}"
       },
       "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
       "typeVersion": 1.3,
@@ -502,6 +520,17 @@
       ]
     },
     "Verify_Identity": {
+      "main": [
+        [
+          {
+            "node": "Restore_Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restore_Context": {
       "main": [
         [
           {
