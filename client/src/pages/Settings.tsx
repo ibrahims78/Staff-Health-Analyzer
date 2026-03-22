@@ -606,6 +606,7 @@ function NotificationSettingsCard() {
   const [adminPhone, setAdminPhone] = useState("");
   const [waUrl, setWaUrl] = useState("");
   const [n8nWaWebhook, setN8nWaWebhook] = useState("");
+  const [n8nWaWebhookProd, setN8nWaWebhookProd] = useState("");
   const [tgToken, setTgToken] = useState("");
   const [tgChatId, setTgChatId] = useState("");
   const [showTgToken, setShowTgToken] = useState(false);
@@ -635,6 +636,7 @@ function NotificationSettingsCard() {
     setAdminPhone(find("admin_notification_phone"));
     setWaUrl(find("whatsapp_gateway_url"));
     setN8nWaWebhook(find("n8n_wa_send_webhook"));
+    setN8nWaWebhookProd(find("n8n_wa_send_webhook_prod"));
     setTgToken(find("telegram_bot_token"));
     setTgChatId(find("telegram_notification_chat_id"));
   }, [settings]);
@@ -663,6 +665,7 @@ function NotificationSettingsCard() {
         apiRequest("POST", "/api/settings", { key: "admin_notification_phone", value: adminPhone.trim().replace(/\D/g, "") }),
         apiRequest("POST", "/api/settings", { key: "whatsapp_gateway_url", value: waUrl.trim() }),
         apiRequest("POST", "/api/settings", { key: "n8n_wa_send_webhook", value: n8nWaWebhook.trim() }),
+        apiRequest("POST", "/api/settings", { key: "n8n_wa_send_webhook_prod", value: n8nWaWebhookProd.trim() }),
         apiRequest("POST", "/api/settings", { key: "telegram_bot_token", value: tgToken.trim() }),
         apiRequest("POST", "/api/settings", { key: "telegram_notification_chat_id", value: tgChatId.trim() }),
       ]);
@@ -851,12 +854,13 @@ function NotificationSettingsCard() {
               </Button>
             </div>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              استورد <strong>Sidawi_Send_WA.json</strong> في n8n ← فعِّله ← انسخ رابط الـ Webhook الذي يُنشئه ← الصقه هنا.
-              هذا يجعل الإشعارات من البرنامج تمر عبر n8n المحلي ثم لبوابة واتساب.
+              استورد <strong>Sidawi_Send_WA.json</strong> في n8n ← فعِّله ← انسخ كلا الرابطين (الاختبار والنشر) ← الصقهما هنا.
+              البرنامج سيجرّب كليهما تلقائياً — أيهما يستجيب يُكمل الإرسال.
             </p>
+            <label className="text-xs text-muted-foreground mb-1 block">رابط Webhook — وضع الاختبار (Test)</label>
             <Input
               data-testid="input-n8n-wa-webhook"
-              placeholder="https://n8n.your-instance.com/webhook/sidawi-send-wa"
+              placeholder="https://n8n.your-instance.com/webhook-test/sidawi-send-wa"
               value={n8nWaWebhook}
               onChange={(e) => setN8nWaWebhook(e.target.value)}
               dir="ltr"
@@ -865,7 +869,27 @@ function NotificationSettingsCard() {
             {n8nWaWebhook.trim() && (
               <p className="text-[11px] text-green-700 dark:text-green-400 flex items-center gap-1">
                 <CheckCircle2 className="h-3 w-3" />
-                رابط n8n محدَّد — إشعارات واتساب ستُرسَل عبره
+                رابط الاختبار محدَّد
+              </p>
+            )}
+            <label className="text-xs text-muted-foreground mt-2 block">رابط Webhook ورك فلو Sidawi_Send_WA — وضع النشر (Production)</label>
+            <Input
+              data-testid="input-n8n-wa-webhook-prod"
+              placeholder="https://n8n.your-instance.com/webhook/sidawi-send-wa"
+              value={n8nWaWebhookProd}
+              onChange={(e) => setN8nWaWebhookProd(e.target.value)}
+              dir="ltr"
+              className="font-mono text-xs"
+            />
+            {n8nWaWebhookProd.trim() && (
+              <p className="text-[11px] text-green-700 dark:text-green-400 flex items-center gap-1">
+                <CheckCircle2 className="h-3 w-3" />
+                رابط النشر محدَّد
+              </p>
+            )}
+            {(n8nWaWebhook.trim() || n8nWaWebhookProd.trim()) && (
+              <p className="text-[11px] text-blue-700 dark:text-blue-400 flex items-center gap-1 mt-1">
+                💡 سيجرّب البرنامج كلا الرابطين تلقائياً — أيهما يستجيب يُكمل الإرسال
               </p>
             )}
           </div>

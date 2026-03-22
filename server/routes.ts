@@ -62,6 +62,26 @@ async function sendWhatsAppWithRetry(
   return { success: false, error: `فشل الإرسال بعد ${maxRetries} محاولات — ${lastError}. تحقق من استقرار الاتصال بالسيرفر.` };
 }
 
+// يجرّب رابط النشر أولاً، ثم رابط الاختبار كبديل — ينجح إذا نجح أيٌّ منهما
+async function sendWhatsAppTryBoth(
+  prodUrl: string | null | undefined,
+  testUrl: string | null | undefined,
+  number: string,
+  message: string
+): Promise<{ success: boolean; error?: string }> {
+  const urls = [prodUrl, testUrl].filter((u): u is string => !!u && u.trim().length > 0);
+  if (urls.length === 0) {
+    return { success: false, error: "لم يُهيَّأ أي رابط n8n للإرسال — راجع إعدادات الإشعارات" };
+  }
+  const errors: string[] = [];
+  for (const url of urls) {
+    const result = await sendWhatsAppWithRetry(url.trim(), number, message, 1, 0);
+    if (result.success) return { success: true };
+    errors.push(result.error ?? "فشل غير معروف");
+  }
+  return { success: false, error: errors.join(" | ") };
+}
+
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 5, // Limit each IP to 5 login requests per windowMs
@@ -1508,11 +1528,17 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const results: { channel: string; success: boolean; error?: string }[] = [];
 
       // ── إرسال عبر واتساب (عبر n8n webhook) ───────────────────────────────
-      const adminPhone    = await storage.getSetting("admin_notification_phone");
-      const n8nWaWebhook  = await storage.getSetting("n8n_wa_send_webhook");
+      const adminPhone        = await storage.getSetting("admin_notification_phone");
+      const n8nWaWebhookProd  = await storage.getSetting("n8n_wa_send_webhook_prod");
+      const n8nWaWebhookTest  = await storage.getSetting("n8n_wa_send_webhook");
 
-      if (adminPhone && n8nWaWebhook) {
-        const waResult = await sendWhatsAppWithRetry(String(n8nWaWebhook), String(adminPhone).replace(/\D/g, ""), message);
+      if (adminPhone && (n8nWaWebhookProd || n8nWaWebhookTest)) {
+        const waResult = await sendWhatsAppTryBoth(
+          n8nWaWebhookProd ? String(n8nWaWebhookProd) : null,
+          n8nWaWebhookTest ? String(n8nWaWebhookTest) : null,
+          String(adminPhone).replace(/\D/g, ""),
+          message
+        );
         results.push({ channel: "whatsapp", ...waResult });
       }
 
@@ -1580,13 +1606,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       // ── إرسال عبر واتساب (عبر n8n webhook) ───────────────────────────────
       if (channels.includes("whatsapp")) {
-        const n8nWaWebhook = await storage.getSetting("n8n_wa_send_webhook");
+        const n8nWaWebhookProd2 = await storage.getSetting("n8n_wa_send_webhook_prod");
+        const n8nWaWebhookTest2 = await storage.getSetting("n8n_wa_send_webhook");
 
-        if (!n8nWaWebhook) {
+        if (!n8nWaWebhookProd2 && !n8nWaWebhookTest2) {
           results.push({ channel: "whatsapp", success: false, error: "رابط n8n لإرسال واتساب غير مُهيّأ — راجع إعدادات الإشعارات" });
         } else {
           const number = botUser.phoneNumber.replace(/\D/g, "");
-          const waResult = await sendWhatsAppWithRetry(String(n8nWaWebhook), number, message);
+          const waResult = await sendWhatsAppTryBoth(
+            n8nWaWebhookProd2 ? String(n8nWaWebhookProd2) : null,
+            n8nWaWebhookTest2 ? String(n8nWaWebhookTest2) : null,
+            number,
+            message
+          );
           results.push({ channel: "whatsapp", ...waResult });
         }
       }
