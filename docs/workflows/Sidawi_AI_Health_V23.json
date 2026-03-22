@@ -323,7 +323,7 @@
             },
             {
               "name": "message",
-              "value": "=🚨 تنبيه: خطأ في خدمة التحقق\n\n⏰ الوقت: {{ new Date().toLocaleString('ar-SA') }}\n📡 المصدر: {{ $json.source }}\n📞 المُرسِل: {{ $json.from }}\n❌ الخطأ: {{ $json.error?.message ?? 'خطأ غير معروف' }}\n\n⚠️ يُرجى مراجعة السيرفر فوراً."
+              "value": "=🚨 تنبيه: خطأ في خدمة التحقق\n\n⏰ الوقت: {{ new Date().toLocaleString('ar-SA', { timeZone: 'Asia/Damascus' }) }}\n📡 المصدر: {{ $json.source }}\n📞 المُرسِل: {{ $json.from }}\n❌ الخطأ: {{ $json.error?.message ?? 'خطأ غير معروف' }}\n\n⚠️ يُرجى مراجعة السيرفر فوراً."
             }
           ]
         },
@@ -766,7 +766,7 @@
             },
             {
               "name": "message",
-              "value": "=🔐 محاولة وصول غير مصرح به\n\n⏰ الوقت: {{ new Date().toLocaleString('ar-SA') }}\n📡 المصدر: {{ $json.source }}\n📞 المُعرِّف: {{ $json.from }}\n🔑 الكود المُرسَل: {{ $json.content }}\n\n⚠️ هذا المستخدم غير مسجل في النظام أو أرسل كوداً خاطئاً."
+              "value": "=🔐 محاولة وصول غير مصرح به\n\n⏰ الوقت: {{ new Date().toLocaleString('ar-SA', { timeZone: 'Asia/Damascus' }) }}\n📡 المصدر: {{ $json.source }}\n📞 المُعرِّف: {{ $json.from }}\n🔑 الكود المُرسَل: {{ $json.content }}\n\n⚠️ هذا المستخدم غير مسجل في النظام أو أرسل كوداً خاطئاً."
             }
           ]
         },
@@ -1159,7 +1159,7 @@
             },
             {
               "name": "message",
-              "value": "=🧹 تقرير التنظيف التلقائي - {{ new Date().toLocaleString('ar-SA') }}\n\n✅ جلسات مُنظَّفة: {{ $json.cleaned }}\n👥 إجمالي المستخدمين: {{ $json.totalUsers }}\n🟢 نشطون بعد التنظيف: {{ $json.activeAfterCleanup }}\n\n⏰ وقت التنفيذ: {{ $json.cleanedAt }}"
+              "value": "=🧹 تقرير التنظيف التلقائي - {{ new Date().toLocaleString('ar-SA', { timeZone: 'Asia/Damascus' }) }}\n\n✅ جلسات مُنظَّفة: {{ $json.cleaned }}\n👥 إجمالي المستخدمين: {{ $json.totalUsers }}\n🟢 نشطون بعد التنظيف: {{ $json.activeAfterCleanup }}\n\n⏰ وقت التنفيذ: {{ $json.cleanedAt }}"
             }
           ]
         },
@@ -1206,7 +1206,7 @@
             },
             {
               "name": "message",
-              "value": "=✅ تفعيل جديد للبوت\n\n👤 الاسم: {{ $('Verify_Identity').item.json.full_name }}\n📡 المصدر: {{ $json.source }}\n📞 الرقم: {{ $json.from }}\n⏰ الوقت: {{ new Date().toLocaleString('ar-SA') }}\n\n💡 المستخدم أصبح نشطاً في النظام."
+              "value": "=✅ تفعيل جديد للبوت\n\n👤 الاسم: {{ $('Verify_Identity').item.json.full_name }}\n📡 المصدر: {{ $json.source }}\n📞 الرقم: {{ $('Verify_Identity').item.json.phone_number }}\n⏰ الوقت: {{ new Date().toLocaleString('ar-SA', { timeZone: 'Asia/Damascus' }) }}\n\n💡 المستخدم أصبح نشطاً في النظام."
             }
           ]
         }
