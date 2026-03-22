@@ -366,8 +366,8 @@
     {
       "parameters": {
         "sessionIdType": "customKey",
-        "sessionKey": "={{ $('Verify_Identity').item.json.phone_number }}",
-        "key": "={{ $('Verify_Identity').item.json.phone_number }}"
+        "sessionKey": "={{ $('Verify_Identity').item.json.phone_number || $('Sidawi_Health_WH').item.json.body.from }}",
+        "key": "={{ $('Verify_Identity').item.json.phone_number || $('Sidawi_Health_WH').item.json.body.from }}"
       },
       "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
       "typeVersion": 1.3,

@@ -1713,6 +1713,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             is_bot_active: false,
             action: "deactivated",
             full_name: botUser.fullName,
+            phone_number: botUser.phoneNumber,
             deactivation_code: botUser.deactivationCode,
           });
         }
@@ -1731,6 +1732,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
               is_bot_active: false,
               action: "auto_deactivated",
               full_name: botUser.fullName,
+              phone_number: botUser.phoneNumber,
               deactivation_code: botUser.deactivationCode,
             });
           }
@@ -1741,6 +1743,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             is_bot_active: true,
             action: "message",
             full_name: botUser.fullName,
+            phone_number: botUser.phoneNumber,
             deactivation_code: botUser.deactivationCode,
           });
         }
