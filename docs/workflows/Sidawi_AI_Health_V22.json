@@ -504,6 +504,53 @@
         }
       },
       "notes": "⚠️ غيّر قيمة number برقم هاتف المدير (أرقام فقط بدون مسافات)"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sidawi-send-wa",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "wa-notify-webhook-v22-001",
+      "name": "Notify_WA_Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -2960,
+        500
+      ],
+      "webhookId": "sidawi-send-wa-v22"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://172.17.0.1:8082/send-text",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "number",
+              "value": "={{ $json.body.number }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.body.message }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "wa-notify-gateway-v22-002",
+      "name": "Notify_Send_Gateway",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2688,
+        500
+      ]
     }
   ],
   "pinData": {},
@@ -644,6 +691,17 @@
         [
           {
             "node": "WA_Admin_Activation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify_WA_Webhook": {
+      "main": [
+        [
+          {
+            "node": "Notify_Send_Gateway",
             "type": "main",
             "index": 0
           }

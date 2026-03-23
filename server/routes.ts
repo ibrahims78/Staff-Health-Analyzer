@@ -1187,18 +1187,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  // ─── GET /api/v1/bot/workflow-send-wa ────────────────────────────────────────
-  app.get("/api/v1/bot/workflow-send-wa", async (req, res) => {
-    if (req.user?.role !== 'admin') return res.status(403).send("Unauthorized");
-    try {
-      const { json, missing } = await buildWorkflowJson(req, "Sidawi_Send_WA.json");
-      res.setHeader("Content-Type", "application/json");
-      res.setHeader("Content-Disposition", 'attachment; filename="Sidawi_Send_WA.json"');
-      res.send(json);
-    } catch (e: any) {
-      res.status(404).json({ message: "ملف الورك فلو غير موجود" });
-    }
-  });
 
   app.post(api.settings.update.path, async (req, res) => {
     if (req.user?.role !== 'admin') return res.status(403).send("Unauthorized");

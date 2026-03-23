@@ -1189,6 +1189,53 @@
         }
       },
       "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sidawi-send-wa",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "wa-notify-webhook-v23-001",
+      "name": "Notify_WA_Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -3200,
+        900
+      ],
+      "webhookId": "sidawi-send-wa-v23"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://172.17.0.1:8082/send-text",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "number",
+              "value": "={{ $json.body.number }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.body.message }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "wa-notify-gateway-v23-002",
+      "name": "Notify_Send_Gateway",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -2880,
+        900
+      ]
     }
   ],
   "pinData": {},
@@ -1531,6 +1578,17 @@
           {
             "node": "AI_Agent",
             "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify_WA_Webhook": {
+      "main": [
+        [
+          {
+            "node": "Notify_Send_Gateway",
+            "type": "main",
             "index": 0
           }
         ]

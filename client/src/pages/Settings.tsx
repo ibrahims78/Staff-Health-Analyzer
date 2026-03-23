@@ -613,7 +613,6 @@ function NotificationSettingsCard() {
   const [saving, setSaving] = useState(false);
   const [downloadingV22, setDownloadingV22] = useState(false);
   const [downloadingV23, setDownloadingV23] = useState(false);
-  const [downloadingSendWa, setDownloadingSendWa] = useState(false);
 
   const { data: settings, isLoading } = useQuery<any[]>({
     queryKey: ["/api/settings"],
@@ -678,29 +677,6 @@ function NotificationSettingsCard() {
       toast({ title: "فشل الحفظ", description: e.message, variant: "destructive" });
     } finally {
       setSaving(false);
-    }
-  }
-
-  async function downloadSendWaWorkflow() {
-    setDownloadingSendWa(true);
-    try {
-      const res = await fetch("/api/v1/bot/workflow-send-wa", { credentials: "include" });
-      if (!res.ok) {
-        toast({ title: "فشل التحميل", description: "تعذّر تحميل ملف الورك فلو", variant: "destructive" });
-        return;
-      }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "Sidawi_Send_WA.json";
-      a.click();
-      URL.revokeObjectURL(url);
-      toast({ title: "تم تحميل Sidawi_Send_WA.json", description: "استورده في n8n واحصل على رابط الـ Webhook ثم أدخله في الحقل أدناه." });
-    } catch (e: any) {
-      toast({ title: "فشل التحميل", description: e.message, variant: "destructive" });
-    } finally {
-      setDownloadingSendWa(false);
     }
   }
 
@@ -836,25 +812,12 @@ function NotificationSettingsCard() {
 
           {/* n8n Send WA Webhook */}
           <div className="rounded-lg border border-green-500/20 bg-green-50/40 dark:bg-green-950/20 p-3 space-y-2">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold text-green-800 dark:text-green-300">
-                رابط n8n لإرسال الرسائل من البرنامج
-              </p>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-7 text-[11px] gap-1.5 border-green-500/40 text-green-700 dark:text-green-400 hover:bg-green-500/10"
-                onClick={downloadSendWaWorkflow}
-                disabled={downloadingSendWa}
-                data-testid="btn-download-send-wa"
-              >
-                {downloadingSendWa ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
-                تحميل Sidawi_Send_WA.json
-              </Button>
-            </div>
+            <p className="text-xs font-semibold text-green-800 dark:text-green-300">
+              رابط n8n لإرسال الإشعارات من البرنامج
+            </p>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              استورد <strong>Sidawi_Send_WA.json</strong> في n8n ← فعِّله ← انسخ كلا الرابطين (الاختبار والنشر) ← الصقهما هنا.
+              تم دمج webhook الإشعارات داخل ملفَي V22 و V23 مباشرةً (نود <strong>Notify_WA_Webhook</strong> بمسار <code className="bg-muted px-1 rounded font-mono">sidawi-send-wa</code>).
+              بعد استيراد الورك فلو في n8n وتفعيله، انسخ رابطَي الاختبار والنشر للنود وألصقهما هنا.
               البرنامج سيجرّب كليهما تلقائياً — أيهما يستجيب يُكمل الإرسال.
             </p>
             <label className="text-xs text-muted-foreground mb-1 block">رابط Webhook — وضع الاختبار (Test)</label>
@@ -872,7 +835,7 @@ function NotificationSettingsCard() {
                 رابط الاختبار محدَّد
               </p>
             )}
-            <label className="text-xs text-muted-foreground mt-2 block">رابط Webhook ورك فلو Sidawi_Send_WA — وضع النشر (Production)</label>
+            <label className="text-xs text-muted-foreground mt-2 block">رابط Webhook — وضع النشر (Production)</label>
             <Input
               data-testid="input-n8n-wa-webhook-prod"
               placeholder="https://n8n.your-instance.com/webhook/sidawi-send-wa"
