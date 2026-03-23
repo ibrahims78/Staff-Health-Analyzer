@@ -1253,6 +1253,110 @@
         -2940,
         100
       ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ─── TG_Extract_File_URL ────────────────────────────────────────────────────\n// يستخرج رابط تنزيل الملف (xlsx أو docx) من نص رد الذكاء الاصطناعي.\n// إذا وُجد رابط → يحدد نوع الملف ومساره للإرسال عبر telegram-send-document.\n// إذا لم يُوجد  → يمرر الرد النصي كما هو لـ TG_AI_Output.\n\nconst output = $json.output || '';\nconst chatId = $('Restore_Context').item.json.from;\n\n// البحث عن أي رابط يحتوي على xlsx أو docx\nconst urlRegex = /https?:\\/\\/[^\\s\\n\"'<>]+?(?:\\.xlsx|\\.docx)[^\\s\\n\"'<>]*/gi;\nconst matches = output.match(urlRegex);\n\nif (matches && matches.length > 0) {\n  const fileUrl = matches[0];\n\n  // استخراج documentPath من الرابط: /api/v1/files/uploads/...\n  const pathMatch = fileUrl.match(/\\/api\\/v1\\/files\\/(uploads\\/[^?&#\\s]+)/);\n  const documentPath = pathMatch ? decodeURIComponent(pathMatch[1]) : null;\n\n  // تحديد نوع الملف\n  const isExcel = fileUrl.toLowerCase().includes('.xlsx') || fileUrl.toLowerCase().includes('/excel_exports/');\n  const fileType = isExcel ? 'excel' : 'word';\n\n  // تنظيف النص: حذف الرابط الخام وإبقاء باقي الرد\n  let cleanOutput = output.replace(urlRegex, '').replace(/\\n{3,}/g, '\\n\\n').trim();\n\n  return [{\n    json: {\n      output: cleanOutput,\n      hasFile: documentPath !== null,\n      documentPath,\n      fileType,\n      chatId,\n      fileUrl\n    }\n  }];\n} else {\n  return [{\n    json: {\n      output,\n      hasFile: false,\n      chatId\n    }\n  }];\n}"
+      },
+      "id": "bb000001-0001-0001-0001-000000000040",
+      "name": "TG_Extract_File_URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -640,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "has-file-cond-001",
+              "leftValue": "={{ $json.hasFile }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "bb000001-0001-0001-0001-000000000041",
+      "name": "TG_Has_File",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -320,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://employee-management-system-ai-chat--alsid2225.replit.app/api/v1/bot/telegram-send-document",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "3477e2bd6616a95eb2dcbb3a9e39b663fddab5a90fe7d71cdd45a7b34040fca4"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"chatId\": \"{{ $json.chatId }}\",\n  \"type\": \"document\",\n  \"documentPath\": \"{{ $json.documentPath }}\"\n}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "bb000001-0001-0001-0001-000000000042",
+      "name": "TG_Send_File",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        0,
+        400
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $('TG_Extract_File_URL').item.json.chatId }}",
+        "text": "={{ $('TG_Extract_File_URL').item.json.output || '📎 تم إرسال الملف المطلوب.' }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "bb000001-0001-0001-0001-000000000043",
+      "name": "TG_Text_After_File",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        400
+      ],
+      "continueOnFail": true,
+      "credentials": {
+        "telegramApi": {
+          "id": "TELEGRAM_CREDENTIAL_ID",
+          "name": "Telegram API"
+        }
+      }
     }
   ],
   "pinData": {},
@@ -1494,7 +1598,58 @@
         ],
         [
           {
+            "node": "TG_Extract_File_URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TG_Extract_File_URL": {
+      "main": [
+        [
+          {
+            "node": "TG_Has_File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TG_Has_File": {
+      "main": [
+        [
+          {
+            "node": "TG_Send_File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
             "node": "TG_AI_Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TG_Send_File": {
+      "main": [
+        [
+          {
+            "node": "TG_Text_After_File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TG_Text_After_File": {
+      "main": [
+        [
+          {
+            "node": "Log_Conversation",
             "type": "main",
             "index": 0
           }
@@ -1626,10 +1781,10 @@
     "availableInMCP": false,
     "errorWorkflow": ""
   },
-  "versionId": "v23-multi-channel-pro-2026",
+  "versionId": "v23-multi-channel-pro-2026-fix-tg-files",
   "meta": {
     "instanceId": "9209d1367e21b216f13b9563bb21cb1c1fcb732cef287186a2e347fcf573779c",
-    "notes": "V23 - Multi-Channel Pro: WhatsApp + Telegram, Error Handling, Admin Alerts, Scheduled Cleanup, Conversation Logging, Stats Tool, 10-message Memory Window"
+    "notes": "V23 - Multi-Channel Pro: WhatsApp + Telegram, Error Handling, Admin Alerts, Scheduled Cleanup, Conversation Logging, Stats Tool, 10-message Memory Window. Fix: Telegram now sends Excel/Word/documents as real files via sendDocument API (TG_Extract_File_URL → TG_Has_File → TG_Send_File → TG_Text_After_File)."
   },
   "tags": [
     "production",
