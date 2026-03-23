@@ -1517,19 +1517,28 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       const results: { channel: string; success: boolean; error?: string }[] = [];
 
-      // ── إرسال عبر واتساب (عبر n8n webhook) ───────────────────────────────
-      const adminPhone        = await storage.getSetting("admin_notification_phone");
-      const n8nWaWebhookProd  = await storage.getSetting("n8n_wa_send_webhook_prod");
-      const n8nWaWebhookTest  = await storage.getSetting("n8n_wa_send_webhook");
+      // ── إرسال عبر واتساب (مباشرةً عبر gateway بدون المرور بـ n8n webhook) ──
+      const adminPhone      = await storage.getSetting("admin_notification_phone");
+      const waGatewayUrl    = await storage.getSetting("whatsapp_gateway_url");
 
-      if (adminPhone && (n8nWaWebhookProd || n8nWaWebhookTest)) {
-        const waResult = await sendWhatsAppTryBoth(
-          n8nWaWebhookProd ? String(n8nWaWebhookProd) : null,
-          n8nWaWebhookTest ? String(n8nWaWebhookTest) : null,
-          String(adminPhone).replace(/\D/g, ""),
-          message
-        );
-        results.push({ channel: "whatsapp", ...waResult });
+      if (adminPhone && waGatewayUrl) {
+        try {
+          const phone = String(adminPhone).replace(/\D/g, "");
+          const waRes = await fetch(String(waGatewayUrl), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ number: phone, message }),
+            signal: AbortSignal.timeout(10000),
+          });
+          if (waRes.ok) {
+            results.push({ channel: "whatsapp", success: true });
+          } else {
+            const errText = await waRes.text().catch(() => `HTTP ${waRes.status}`);
+            results.push({ channel: "whatsapp", success: false, error: errText });
+          }
+        } catch (e: any) {
+          results.push({ channel: "whatsapp", success: false, error: e.message });
+        }
       }
 
       // ── إرسال عبر تيليغرام ────────────────────────────────────────────────
