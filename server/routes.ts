@@ -700,7 +700,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
             const dateStr = format(new Date(), "yyyy-MM-dd");
             const safeEmployeeName = sanitizePath(employee.fullName);
             const originalExt = path.extname(file.originalname);
-            const dynamicName = `${safeEmployeeName}_document_${dateStr}_${Math.random().toString(36).substring(2, 7)}${originalExt}`;
+            const dynamicName = `${safeEmployeeName}-doc-${dateStr}-${Math.random().toString(36).substring(2, 7)}${originalExt}`;
             
             const finalPath = path.join(uploadBaseDir, dynamicName);
             try {
@@ -811,7 +811,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           const dateStr = format(new Date(), "yyyy-MM-dd");
           const safeEmployeeName = sanitizePath(oldEmployee.fullName);
           const originalExt = path.extname(file.originalname);
-          const dynamicName = `${safeEmployeeName}_document_${dateStr}_${Math.random().toString(36).substring(2, 7)}${originalExt}`;
+          const dynamicName = `${safeEmployeeName}-doc-${dateStr}-${Math.random().toString(36).substring(2, 7)}${originalExt}`;
 
           const finalPath = path.join(uploadBaseDir, dynamicName);
           try {
@@ -1949,7 +1949,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const documents = docPaths.map((docPath) => {
         const fileName = path.basename(docPath);
         const cleanPath = docPath.startsWith("/") ? docPath.substring(1) : docPath;
-        const encodedPath = cleanPath.split("/").map((s) => encodeURIComponent(s)).join("/");
+        const encodedPath = cleanPath.split("/").map((s) => encodeURIComponent(s).replace(/_/g, "%5F")).join("/");
         const downloadUrl = apiToken
           ? `${baseUrl}/api/v1/files/${encodedPath}?_t=${apiToken}`
           : `${baseUrl}${docPath}`;
@@ -2050,7 +2050,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           xls: "Excel",
         };
         const cleanPath = docPath.startsWith("/") ? docPath.substring(1) : docPath;
-        const encodedCleanPath = cleanPath.split("/").map((s: string) => encodeURIComponent(s)).join("/");
+        const encodedCleanPath = cleanPath.split("/").map((s: string) => encodeURIComponent(s).replace(/_/g, "%5F")).join("/");
         const fileUrl = botApiToken
           ? `${baseUrl}/api/v1/files/${encodedCleanPath}?_t=${botApiToken}`
           : `${baseUrl}${docPath}`;
@@ -2157,8 +2157,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           const ext = path.extname(fileName).toLowerCase().replace(".", "");
           // Build a bot-accessible URL via /api/v1/files/ with API key embedded
           const cleanPath = docPath.startsWith("/") ? docPath.substring(1) : docPath;
-          // URL-encode each path segment to handle Arabic characters and spaces
-          const encodedPath = cleanPath.split("/").map((s) => encodeURIComponent(s)).join("/");
+          // URL-encode each path segment to handle Arabic characters, spaces and underscores
+          const encodedPath = cleanPath.split("/").map((s) => encodeURIComponent(s).replace(/_/g, "%5F")).join("/");
           const directUrl = apiKeyToken
             ? `${baseUrl}/api/v1/files/${encodedPath}?_t=${apiKeyToken}`
             : `${baseUrl}${docPath}`;
