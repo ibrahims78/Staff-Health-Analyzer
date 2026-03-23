@@ -1192,23 +1192,6 @@
     },
     {
       "parameters": {
-        "httpMethod": "POST",
-        "path": "sidawi-send-wa",
-        "responseMode": "onReceived",
-        "options": {}
-      },
-      "id": "wa-notify-webhook-v23-001",
-      "name": "Notify_WA_Webhook",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [
-        -3200,
-        900
-      ],
-      "webhookId": "sidawi-send-wa-v23"
-    },
-    {
-      "parameters": {
         "method": "POST",
         "url": "http://172.17.0.1:8082/send-text",
         "sendBody": true,
@@ -1236,6 +1219,40 @@
         -2880,
         900
       ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "route-type-cond-v23",
+              "leftValue": "={{ $json.body.number !== undefined && $json.body.number !== '' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "route-type-if-v23",
+      "name": "Route_Type",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -2940,
+        100
+      ]
     }
   ],
   "pinData": {},
@@ -1244,7 +1261,7 @@
       "main": [
         [
           {
-            "node": "Normalize_WA",
+            "node": "Route_Type",
             "type": "main",
             "index": 0
           }
@@ -1583,11 +1600,18 @@
         ]
       ]
     },
-    "Notify_WA_Webhook": {
+    "Route_Type": {
       "main": [
         [
           {
             "node": "Notify_Send_Gateway",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Normalize_WA",
             "type": "main",
             "index": 0
           }

@@ -816,14 +816,14 @@ function NotificationSettingsCard() {
               رابط n8n لإرسال الإشعارات من البرنامج
             </p>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              تم دمج webhook الإشعارات داخل ملفَي V22 و V23 مباشرةً (نود <strong>Notify_WA_Webhook</strong> بمسار <code className="bg-muted px-1 rounded font-mono">sidawi-send-wa</code>).
-              بعد استيراد الورك فلو في n8n وتفعيله، انسخ رابطَي الاختبار والنشر للنود وألصقهما هنا.
-              البرنامج سيجرّب كليهما تلقائياً — أيهما يستجيب يُكمل الإرسال.
+              الورك فلو الآن يستخدم <strong>webhook واحد</strong> لكل من رسائل البوت وإشعارات البرنامج معاً.
+              نود <strong>Route_Type</strong> (IF) يفرّق تلقائياً: إذا وصل طلب إشعار من البرنامج يُرسله مباشرةً لبوابة واتساب، وإلا يُكمله للبوت.
+              أدخل رابط الـ webhook الخاص بورك فلو V22 أو V23 من n8n هنا.
             </p>
             <label className="text-xs text-muted-foreground mb-1 block">رابط Webhook — وضع الاختبار (Test)</label>
             <Input
               data-testid="input-n8n-wa-webhook"
-              placeholder="https://n8n.your-instance.com/webhook-test/sidawi-send-wa"
+              placeholder="https://n8n.your-instance.com/webhook-test/3e1fee9b-..."
               value={n8nWaWebhook}
               onChange={(e) => setN8nWaWebhook(e.target.value)}
               dir="ltr"
@@ -838,7 +838,7 @@ function NotificationSettingsCard() {
             <label className="text-xs text-muted-foreground mt-2 block">رابط Webhook — وضع النشر (Production)</label>
             <Input
               data-testid="input-n8n-wa-webhook-prod"
-              placeholder="https://n8n.your-instance.com/webhook/sidawi-send-wa"
+              placeholder="https://n8n.your-instance.com/webhook/3e1fee9b-..."
               value={n8nWaWebhookProd}
               onChange={(e) => setN8nWaWebhookProd(e.target.value)}
               dir="ltr"
