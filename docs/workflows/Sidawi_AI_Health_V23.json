@@ -66,13 +66,13 @@
             {
               "id": "wa-assign-from",
               "name": "from",
-              "value": "={{ $json.body.from || $json.body.number || $json.body.sender || $json.body.phone || '' }}",
+              "value": "={{ $json.body.data.from }}",
               "type": "string"
             },
             {
               "id": "wa-assign-content",
               "name": "content",
-              "value": "={{ $json.body.content }}",
+              "value": "={{ $json.body.data.body }}",
               "type": "string"
             },
             {

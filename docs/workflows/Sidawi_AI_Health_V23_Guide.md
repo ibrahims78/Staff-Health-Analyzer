@@ -150,8 +150,8 @@
 
 | الحقل | مصدر WA | مصدر TG |
 |-------|---------|---------|
-| `from` | `$json.body.from` (رقم الهاتف) | `String($json.message.chat.id)` (معرِّف رقمي) |
-| `content` | `$json.body.content` (نص الرسالة) | `$json.message.text` (نص الرسالة) |
+| `from` | `$json.body.data.from` (WhatsApp LID مثل `72087234449573@lid`) | `String($json.message.chat.id)` (معرِّف رقمي) |
+| `content` | `$json.body.data.body` (نص الرسالة) | `$json.message.text` (نص الرسالة) |
 | `source` | القيمة الثابتة `"whatsapp"` | القيمة الثابتة `"telegram"` |
 
 **بعد التطبيع:**
