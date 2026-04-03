@@ -26,6 +26,9 @@ COPY --from=builder /app/shared ./shared
 COPY --from=builder /app/drizzle.config.ts ./drizzle.config.ts
 COPY docs/table.sql ./dist/table.sql
 
+# Copy workflow JSON templates (read at runtime by buildWorkflowJson)
+COPY --from=builder /app/docs/workflows ./docs/workflows
+
 RUN mkdir -p storage/uploads storage/temp_uploads storage/backups
 
 COPY entrypoint.sh /entrypoint.sh
