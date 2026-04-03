@@ -510,7 +510,7 @@ return [{ json: { ...authResp, source, from, content } }];
 **السيناريو:**
 1. `AI_Agent` ينتهي من المعالجة ويُخرج `$json.output`
 2. `Dispatch_AI_Response` يفحص `$('Restore_Context').item.json.source`
-3. إذا WhatsApp → `WA_AI_Output` (HTTP POST لـ 172.17.0.1:8082)
+3. إذا WhatsApp → `WA_AI_Output` (HTTP POST لـ proteach-wa-api:8080)
 4. إذا Telegram → `TG_AI_Output` (Telegram Node)
 5. كلاهما يتجه لـ `Log_Conversation`
 

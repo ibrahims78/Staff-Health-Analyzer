@@ -190,7 +190,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://172.17.0.1:8082/send-text",
+        "url": "http://proteach-wa-api:8080/send-text",
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
@@ -219,7 +219,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://172.17.0.1:8082/send-text",
+        "url": "http://proteach-wa-api:8080/send-text",
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
@@ -248,7 +248,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://172.17.0.1:8082/send-text",
+        "url": "http://proteach-wa-api:8080/send-text",
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
@@ -355,7 +355,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://172.17.0.1:8082/send-text",
+        "url": "http://proteach-wa-api:8080/send-text",
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
@@ -487,7 +487,7 @@
       ],
       "parameters": {
         "method": "POST",
-        "url": "http://172.17.0.1:8082/send-text",
+        "url": "http://proteach-wa-api:8080/send-text",
         "sendBody": true,
         "options": {},
         "bodyParameters": {
@@ -508,7 +508,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://172.17.0.1:8082/send-text",
+        "url": "http://proteach-wa-api:8080/send-text",
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
