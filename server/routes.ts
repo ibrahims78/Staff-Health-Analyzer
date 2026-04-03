@@ -1134,7 +1134,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const OLD_APP_URL = "https://employee-management-system-ai-chat--alsid2225.replit.app";
     content = content.split(OLD_APP_URL).join(appUrl);
 
-    // 2. First active machine API key
+    // 2. First active machine API key (HR App API key)
     const allKeys = await storage.getApiKeys();
     const machineKey = allKeys.find((k) => k.keyType === "machine" && k.isActive);
     const OLD_API_KEY = "3477e2bd6616a95eb2dcbb3a9e39b663fddab5a90fe7d71cdd45a7b34040fca4";
@@ -1144,16 +1144,33 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       missing.push("machine_api_key");
     }
 
-    // 3. WhatsApp gateway URL
+    // 3. WhatsApp gateway URL (legacy V22 placeholder — kept for backward compatibility)
     const waUrl = await storage.getSetting("whatsapp_gateway_url");
     const OLD_WA_URL = "http://172.17.0.1:8082/send-text";
     if (waUrl && String(waUrl).trim()) {
       content = content.split(OLD_WA_URL).join(String(waUrl).trim());
+    }
+    // Not required — templates now use the internal Docker hostname directly
+
+    // 4. WA-API session ID (required) — injected into every send node body
+    const waSessionId = await storage.getSetting("whatsapp_session_id");
+    const WA_SESSION_PLACEHOLDER = "WA_SESSION_ID_PLACEHOLDER";
+    if (waSessionId && String(waSessionId).trim()) {
+      content = content.split(WA_SESSION_PLACEHOLDER).join(String(waSessionId).trim());
     } else {
-      missing.push("whatsapp_gateway_url");
+      missing.push("whatsapp_session_id");
     }
 
-    // 4. Admin phone number (for V22's WA_Admin_Activation node)
+    // 5. WA-API key (required) — injected into every send node header as x-api-key
+    const waApiKey = await storage.getSetting("whatsapp_api_key");
+    const WA_APIKEY_PLACEHOLDER = "WA_API_KEY_PLACEHOLDER";
+    if (waApiKey && String(waApiKey).trim()) {
+      content = content.split(WA_APIKEY_PLACEHOLDER).join(String(waApiKey).trim());
+    } else {
+      missing.push("whatsapp_api_key");
+    }
+
+    // 6. Admin phone number (for V22's WA_Admin_Activation node) — optional
     const adminPhone = await storage.getSetting("admin_notification_phone");
     const OLD_ADMIN_PHONE = "9671XXXXXXXXXX";
     if (adminPhone && String(adminPhone).replace(/\D/g, "").length >= 8) {

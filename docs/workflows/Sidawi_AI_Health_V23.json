@@ -255,10 +255,14 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://proteach-wa-api:8080/send-text",
+        "url": "http://proteach-wa-api:8080/api/send/text",
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
+            {
+              "name": "sessionId",
+              "value": "WA_SESSION_ID_PLACEHOLDER"
+            },
             {
               "name": "number",
               "value": "={{ $json.from }}"
@@ -269,7 +273,16 @@
             }
           ]
         },
-        "options": {}
+        "options": {},
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "WA_API_KEY_PLACEHOLDER"
+            }
+          ]
+        }
       },
       "id": "bb000001-0001-0001-0001-000000000010",
       "name": "WA_Service_Error",
@@ -526,10 +539,14 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://proteach-wa-api:8080/send-text",
+        "url": "http://proteach-wa-api:8080/api/send/text",
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
+            {
+              "name": "sessionId",
+              "value": "WA_SESSION_ID_PLACEHOLDER"
+            },
             {
               "name": "number",
               "value": "={{ $json.from }}"
@@ -540,7 +557,16 @@
             }
           ]
         },
-        "options": {}
+        "options": {},
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "WA_API_KEY_PLACEHOLDER"
+            }
+          ]
+        }
       },
       "id": "bb000001-0001-0001-0001-000000000015",
       "name": "WA_Welcome",
@@ -615,10 +641,14 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://proteach-wa-api:8080/send-text",
+        "url": "http://proteach-wa-api:8080/api/send/text",
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
+            {
+              "name": "sessionId",
+              "value": "WA_SESSION_ID_PLACEHOLDER"
+            },
             {
               "name": "number",
               "value": "={{ $json.from }}"
@@ -629,7 +659,16 @@
             }
           ]
         },
-        "options": {}
+        "options": {},
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "WA_API_KEY_PLACEHOLDER"
+            }
+          ]
+        }
       },
       "id": "bb000001-0001-0001-0001-000000000018",
       "name": "WA_Goodbye",
@@ -704,10 +743,14 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://proteach-wa-api:8080/send-text",
+        "url": "http://proteach-wa-api:8080/api/send/text",
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
+            {
+              "name": "sessionId",
+              "value": "WA_SESSION_ID_PLACEHOLDER"
+            },
             {
               "name": "number",
               "value": "={{ $json.from }}"
@@ -718,7 +761,16 @@
             }
           ]
         },
-        "options": {}
+        "options": {},
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "WA_API_KEY_PLACEHOLDER"
+            }
+          ]
+        }
       },
       "id": "bb000001-0001-0001-0001-000000000021",
       "name": "WA_AutoTimeout",
@@ -990,10 +1042,14 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://proteach-wa-api:8080/send-text",
+        "url": "http://proteach-wa-api:8080/api/send/text",
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
+            {
+              "name": "sessionId",
+              "value": "WA_SESSION_ID_PLACEHOLDER"
+            },
             {
               "name": "number",
               "value": "={{ $('Restore_Context').item.json.from }}"
@@ -1004,7 +1060,16 @@
             }
           ]
         },
-        "options": {}
+        "options": {},
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "WA_API_KEY_PLACEHOLDER"
+            }
+          ]
+        }
       },
       "id": "bb000001-0001-0001-0001-000000000032",
       "name": "WA_AI_Output",
@@ -1193,10 +1258,14 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://proteach-wa-api:8080/send-text",
+        "url": "http://proteach-wa-api:8080/api/send/text",
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
+            {
+              "name": "sessionId",
+              "value": "WA_SESSION_ID_PLACEHOLDER"
+            },
             {
               "name": "number",
               "value": "={{ $json.body.number }}"
@@ -1209,6 +1278,15 @@
         },
         "options": {
           "timeout": 10000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "WA_API_KEY_PLACEHOLDER"
+            }
+          ]
         }
       },
       "id": "wa-notify-gateway-v23-002",

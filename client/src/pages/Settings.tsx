@@ -605,6 +605,9 @@ function NotificationSettingsCard() {
   const { toast } = useToast();
   const [adminPhone, setAdminPhone] = useState("");
   const [waUrl, setWaUrl] = useState("");
+  const [waSessionId, setWaSessionId] = useState("");
+  const [waApiKey, setWaApiKey] = useState("");
+  const [showWaApiKey, setShowWaApiKey] = useState(false);
   const [n8nWaWebhook, setN8nWaWebhook] = useState("");
   const [n8nWaWebhookProd, setN8nWaWebhookProd] = useState("");
   const [tgToken, setTgToken] = useState("");
@@ -634,6 +637,8 @@ function NotificationSettingsCard() {
     };
     setAdminPhone(find("admin_notification_phone"));
     setWaUrl(find("whatsapp_gateway_url"));
+    setWaSessionId(find("whatsapp_session_id"));
+    setWaApiKey(find("whatsapp_api_key"));
     setN8nWaWebhook(find("n8n_wa_send_webhook"));
     setN8nWaWebhookProd(find("n8n_wa_send_webhook_prod"));
     setTgToken(find("telegram_bot_token"));
@@ -642,7 +647,8 @@ function NotificationSettingsCard() {
 
   function getMissingFields(): string[] {
     const missing: string[] = [];
-    if (!waUrl.trim()) missing.push("رابط بوابة واتساب");
+    if (!waSessionId.trim()) missing.push("معرّف جلسة واتساب (Session ID)");
+    if (!waApiKey.trim()) missing.push("مفتاح API لبوابة واتساب");
     if (!hasMachineKey) missing.push("مفتاح آلة (machine) فعّال");
     return missing;
   }
@@ -663,6 +669,8 @@ function NotificationSettingsCard() {
       await Promise.all([
         apiRequest("POST", "/api/settings", { key: "admin_notification_phone", value: adminPhone.trim().replace(/\D/g, "") }),
         apiRequest("POST", "/api/settings", { key: "whatsapp_gateway_url", value: waUrl.trim() }),
+        apiRequest("POST", "/api/settings", { key: "whatsapp_session_id", value: waSessionId.trim() }),
+        apiRequest("POST", "/api/settings", { key: "whatsapp_api_key", value: waApiKey.trim() }),
         apiRequest("POST", "/api/settings", { key: "n8n_wa_send_webhook", value: n8nWaWebhook.trim() }),
         apiRequest("POST", "/api/settings", { key: "n8n_wa_send_webhook_prod", value: n8nWaWebhookProd.trim() }),
         apiRequest("POST", "/api/settings", { key: "telegram_bot_token", value: tgToken.trim() }),
@@ -702,6 +710,8 @@ function NotificationSettingsCard() {
         const missingLabels: Record<string, string> = {
           machine_api_key: "مفتاح آلة (machine) فعّال",
           whatsapp_gateway_url: "رابط بوابة واتساب",
+          whatsapp_session_id: "معرّف جلسة واتساب (Session ID)",
+          whatsapp_api_key: "مفتاح API لبوابة واتساب",
         };
         const labels = missingServer.map((m) => missingLabels[m] ?? m);
         toast({
@@ -786,12 +796,84 @@ function NotificationSettingsCard() {
             إعدادات واتساب <span className="text-destructive">*</span>
           </div>
 
-          {/* رابط بوابة واتساب (للتضمين في الورك فلو) */}
+          {/* wa-api Session ID */}
           <div className="space-y-2 pr-6">
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">
-                رابط بوابة واتساب المحلية <span className="text-destructive font-bold">*مطلوب</span>
-                <span className="text-muted-foreground font-normal"> — يُضمَّن داخل ملفات V22 و V23</span>
+                معرّف جلسة واتساب (Session ID) <span className="text-destructive font-bold">*مطلوب</span>
+                <span className="text-muted-foreground font-normal"> — اسم الجلسة من داشبورد wa-api</span>
+              </label>
+              <Input
+                data-testid="input-wa-session-id"
+                placeholder="my-session"
+                value={waSessionId}
+                onChange={(e) => setWaSessionId(e.target.value)}
+                dir="ltr"
+                className={`font-mono text-sm ${!waSessionId.trim() ? "border-destructive/50 focus-visible:ring-destructive/30" : ""}`}
+              />
+              {!waSessionId.trim() ? (
+                <p className="text-xs text-destructive mt-1 flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  مطلوب — أدخل اسم الجلسة الموجودة في داشبورد wa-api
+                </p>
+              ) : (
+                <p className="text-xs text-green-600 dark:text-green-400 mt-1 flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3" />
+                  Session ID محدَّد
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* wa-api API Key */}
+          <div className="space-y-2 pr-6">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">
+                مفتاح API لبوابة واتساب (x-api-key) <span className="text-destructive font-bold">*مطلوب</span>
+                <span className="text-muted-foreground font-normal"> — من داشبورد wa-api ← API Keys</span>
+              </label>
+              <div className="relative">
+                <Input
+                  data-testid="input-wa-api-key"
+                  type={showWaApiKey ? "text" : "password"}
+                  placeholder="أدخل مفتاح API الخاص ببوابة واتساب"
+                  value={waApiKey}
+                  onChange={(e) => setWaApiKey(e.target.value)}
+                  dir="ltr"
+                  className={`font-mono text-sm pl-10 ${!waApiKey.trim() ? "border-destructive/50 focus-visible:ring-destructive/30" : ""}`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowWaApiKey(v => !v)}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  tabIndex={-1}
+                >
+                  {showWaApiKey
+                    ? <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                    : <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  }
+                </button>
+              </div>
+              {!waApiKey.trim() ? (
+                <p className="text-xs text-destructive mt-1 flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  مطلوب — أنشئ مفتاح API من داشبورد wa-api أولاً
+                </p>
+              ) : (
+                <p className="text-xs text-green-600 dark:text-green-400 mt-1 flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3" />
+                  مفتاح API محدَّد
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* رابط بوابة واتساب (اختياري الآن - للتوافق مع V22 القديم) */}
+          <div className="space-y-2 pr-6">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">
+                رابط بوابة واتساب القديم
+                <span className="text-muted-foreground font-normal"> — اختياري، للتوافق مع V22 القديم فقط</span>
               </label>
               <Input
                 data-testid="input-wa-gateway-url"
@@ -799,14 +881,8 @@ function NotificationSettingsCard() {
                 value={waUrl}
                 onChange={(e) => setWaUrl(e.target.value)}
                 dir="ltr"
-                className={`font-mono text-sm ${!waUrl.trim() ? "border-destructive/50 focus-visible:ring-destructive/30" : ""}`}
+                className="font-mono text-sm"
               />
-              {!waUrl.trim() && (
-                <p className="text-xs text-destructive mt-1 flex items-center gap-1">
-                  <AlertTriangle className="h-3 w-3" />
-                  هذا الحقل مطلوب لتضمينه في ملفات الورك فلو
-                </p>
-              )}
             </div>
           </div>
 

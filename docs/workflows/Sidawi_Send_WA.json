@@ -21,10 +21,14 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://proteach-wa-api:8080/send-text",
+        "url": "http://proteach-wa-api:8080/api/send/text",
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
+            {
+              "name": "sessionId",
+              "value": "WA_SESSION_ID_PLACEHOLDER"
+            },
             {
               "name": "number",
               "value": "={{ $json.body.number }}"
@@ -37,6 +41,15 @@
         },
         "options": {
           "timeout": 10000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "WA_API_KEY_PLACEHOLDER"
+            }
+          ]
         }
       },
       "id": "send-wa-gateway-001",
