@@ -1,150 +1,163 @@
-# 📊 تقرير شامل — مستودع proteach-n8n-setup
-**التاريخ:** 3 أبريل 2026 | **المطور:** إبراهيم الصيداوي
+# 📊 تقرير شامل — البنية التحتية ProTeach VPS
+**التاريخ:** 4 أبريل 2026 | **المطور:** إبراهيم الصيداوي
 
 ---
 
-## 1. نبذة عامة
+## ما تم تحقيقه في هذه الجلسة
 
-مستودع `proteach-n8n-setup` هو ملف الإدارة المركزي للبنية التحتية الكاملة لمشروع **ProTeach** على سيرفر GCP. يحتوي على ملف `docker-compose.yaml` الذي يُشغّل **8 حاويات** متكاملة تُغطي 3 أنظمة رئيسية + خدمات البنية التحتية.
+### 1. المستودعات التي تم فحصها
+| المستودع | الحالة | اللغة |
+|----------|--------|-------|
+| `ibrahims78/proteach-n8n-setup` | ✅ عام (تم التحقق) | Shell |
+| `ibrahims78/WhatsApp-Bot` | ✅ عام (تم التحقق) | TypeScript |
 
----
-
-## 2. معلومات السيرفر
-
-| العنصر | القيمة |
-|--------|--------|
-| المزود | Google Cloud Platform (GCP) |
-| عنوان IP | 34.179.180.10 |
-| نظام التشغيل | Ubuntu 24.04 LTS |
-| المسار الرئيسي | `/home/ibrahimsidawi/proteach-n8n/` |
-| الشبكة الداخلية | `n8n-network` (Docker Bridge) |
-| المستودع على GitHub | `git@github.com:ibrahims78/proteach-n8n-setup.git` |
-| الفرع الرئيسي | `master` |
-
----
-
-## 3. خريطة الخدمات الكاملة
-
-### أ. خدمات البنية التحتية الأساسية
-
-| الحاوية | الصورة | المنفذ الداخلي | الرابط الخارجي | الوظيفة |
-|---------|--------|----------------|----------------|---------|
-| `proteach-n8n` | `n8nio/n8n:latest` | 5678 | `n8n.sidawin8n.cfd` | محرك الأتمتة |
-| `proteach-db` | `postgres:16-alpine` | 5432 | داخلي فقط | قاعدة بيانات n8n |
-| `proteach-npm` | `jc21/nginx-proxy-manager:latest` | 80, 81, 443 | `proxy.sidawin8n.cfd` | إدارة التوجيه وSSL |
-| `proteach-portainer` | `portainer/portainer-ce:latest` | 9000 | `admin.sidawin8n.cfd` | إدارة الحاويات |
-
-### ب. نظام إدارة الواتساب (WA Manager)
-
-| الحاوية | المنفذ الداخلي | الرابط الخارجي | الوظيفة |
-|---------|----------------|----------------|---------|
-| `proteach-wa-api` | 8080 | `wa-api.sidawin8n.cfd` | محرك معالجة الواتساب |
-| `proteach-wa-dashboard` | 5000 (5005 خارجي مؤقت) | `wa.sidawin8n.cfd` | واجهة إدارة الواتساب |
-| `proteach-wa-db` | 5432 | داخلي فقط | قاعدة بيانات الواتساب |
-
-### ج. نظام إدارة الموظفين (HR App)
-
-| الحاوية | المنفذ الداخلي | الرابط الخارجي | الوظيفة |
-|---------|----------------|----------------|---------|
-| `proteach-hr-app` | 5002 | `hr.sidawin8n.cfd` | تطبيق إدارة الموظفين |
-| `proteach-hr-db` | 5432 | داخلي فقط | قاعدة بيانات الموظفين |
+### 2. الملفات التي تم قراءتها وتحليلها
+- `docker-compose.yaml` — الملف الرئيسي لجميع الحاويات الـ 8
+- `.env` — ملف المتغيرات البيئية
+- `backup.sh` — سكريبت النسخ الاحتياطي اليومي
+- `artifacts/api-server/src/routes/send.ts` — كامل كود نقاط إرسال الواتساب
+- `artifacts/api-server/src/routes/sessions.ts` — كود إدارة جلسات الواتساب
+- `Dockerfile.api.dev` — ملف بناء حاوية wa-api
+- `.env.example` — نموذج المتغيرات البيئية لمشروع الواتساب
+- `README_proteach_n8n.md` — وثيقة الإعداد الموجودة في مستودع الواتساب
 
 ---
 
-## 4. قواعد البيانات
+## معلومات البنية التحتية المُكتشفة
 
-| القاعدة | الحاوية | المستخدم | كلمة المرور | الاسم |
-|---------|---------|---------|------------|-------|
-| n8n | proteach-db | n8n_user | VMware2@ | n8n_database |
-| WhatsApp | proteach-wa-db | wauser | WaPass2026! | whatsapp_manager_db |
-| HR | proteach-hr-db | hruser | HrPass2026! | hr_db |
-
----
-
-## 5. الوضع الحالي للحاويات
-
-### hr-app — وضع التطوير (Development)
-```yaml
-NODE_ENV: development
-PORT: 5002
-dockerfile: Dockerfile.dev
+### السيرفر
 ```
-**Volumes المتزامنة:**
-- `./hr-app/client` → `/app/client`
-- `./hr-app/server` → `/app/server`
-- `./hr-app/shared` → `/app/shared`
-- `./hr_storage` → `/app/storage`
-
-### wa-api — وضع التطوير (Development)
-```yaml
-NODE_ENV: development
-PORT: 8080
-dockerfile: Dockerfile.api.dev
+GCP Ubuntu 24.04 LTS | IP: 34.179.180.10
+المسار: /home/ibrahimsidawi/proteach-n8n/
+الشبكة: n8n-network (Docker Bridge)
 ```
 
-### wa-dashboard — وضع التطوير (Development)
-```yaml
-NODE_ENV: development
-PORT: 5000
-VITE_API_TARGET: http://wa-api:8080
-dockerfile: Dockerfile.dashboard.dev
+### الحاويات الـ 8 الكاملة
+
+| # | الحاوية | الصورة/المصدر | المنفذ | الرابط |
+|---|---------|--------------|--------|--------|
+| 1 | `proteach-db` | postgres:16-alpine | داخلي | — |
+| 2 | `proteach-n8n` | n8nio/n8n:latest | 5678 | n8n.sidawin8n.cfd |
+| 3 | `proteach-npm` | jc21/nginx-proxy-manager | 80/81/443 | proxy.sidawin8n.cfd |
+| 4 | `proteach-portainer` | portainer-ce:latest | 9000 | admin.sidawin8n.cfd |
+| 5 | `proteach-wa-db` | postgres:15-alpine | داخلي | — |
+| 6 | `proteach-wa-api` | WhatsApp-Bot (TypeScript) | 8080 | wa-api.sidawin8n.cfd |
+| 7 | `proteach-wa-dashboard` | WhatsApp-Bot (Vite) | 5000 (5005 خارجي) | wa.sidawin8n.cfd |
+| 8 | `proteach-hr-app` | employee-management-system | 5002 | hr.sidawin8n.cfd |
+| — | `proteach-hr-db` | postgres:15-alpine | داخلي | — |
+
+> ملاحظة: العدد الفعلي 9 حاويات شاملاً hr-db
+
+### تفاصيل wa-api (المكتشفة من الكود)
+
+نقاط الإرسال المدعومة:
+```
+POST /api/send/text    ← نص (sessionId, number, message)
+POST /api/send/image   ← صورة (+ caption اختياري)
+POST /api/send/video   ← فيديو (+ caption اختياري)
+POST /api/send/audio   ← صوت (voice note أو ملف صوتي)
+POST /api/send/file    ← ملف عام (+ fileName, caption)
 ```
 
----
+مميزات متقدمة مُكتشفة في الكود:
+- **آلية Retry ذكية**: عند فشل @c.us تجرب تلقائياً @lid (للحسابات متعددة الأجهزة)
+- **Temp files**: الوسائط base64 تُحفظ مؤقتاً وتُحذف بعد الإرسال
+- **Feature flags**: يمكن تعطيل أنواع إرسال محددة لكل جلسة
+- **Audit logs**: جميع الإرسالات مُسجَّلة في قاعدة البيانات
+- **Rate limiting**: حماية من الإرسال الزائد
+- **Phone validation**: التحقق من صحة أرقام E.164 (7-15 رقم)
 
-## 6. بروتوكول الأمان
+### تفاصيل hr-app
+- **Framework**: React 18 + Express.js v5 + TypeScript
+- **ORM**: Drizzle + PostgreSQL 15
+- **Port الداخلي**: 5002
+- **Hot Reload**: مفعّل عبر volumes مباشرة على السورس كود
+- **SESSION_SECRET**: محفوظ في docker-compose.yaml
+- **المستودع**: github.com/ibrahims78/employee-management-system (main)
 
-| الطبقة | الإعداد |
-|--------|---------|
-| جدار الحماية UFW | يسمح فقط بالمنافذ: 22, 80, 443 |
-| SSL/TLS | شهادات Let's Encrypt عبر Nginx Proxy Manager |
-| Cloudflare | وضع Full (Strict) — حماية DNS وتشفير المرور |
-| Docker | حاوية Portainer محمية بـ `no-new-privileges: true` |
+### تفاصيل n8n
+- **الإصدار**: latest (يتحدث تلقائياً)
+- **الوضع**: production
+- **WEBHOOK_URL**: https://n8n.sidawin8n.cfd/
+- **قاعدة بيانات**: PostgreSQL 16 (أحدث إصدار)
+- **البيانات**: n8n_data/ يحتوي ورك فلو وإعدادات
 
----
+### تفاصيل Nginx Proxy Manager
+- **المنافذ المكشوفة**: 80, 81, 443 فقط (صحيح)
+- **SSL**: Let's Encrypt تلقائي
+- **البيانات الدائمة**: npm_data/ + npm_letsencrypt/
+- **التوجيه**: يعمل كـ reverse proxy لجميع الخدمات
 
-## 7. النسخ الاحتياطي التلقائي
-
-| العنصر | التفاصيل |
-|--------|---------|
-| السكريبت | `~/proteach-n8n/backup.sh` |
-| الجدول | يومياً الساعة 3:00 AM (Cron Job) |
-| المجلدات المحمية | `n8n_data`, `wa_tokens`, `hr_storage`, `wa_postgres_data`, `hr_postgres_data` |
-| الوجهة | Git push إلى `master` تلقائياً |
-| السجل | `backup.log` |
-
----
-
-## 8. إجراء تحديث hr-app من GitHub
-
+### تفاصيل backup.sh
 ```bash
-# الخطوة 1: سحب الكود الجديد
-cd ~/proteach-n8n/hr-app && git pull origin main
-
-# الخطوة 2: إعادة بناء الحاوية فقط (لا تؤثر على الخدمات الأخرى)
-cd ~/proteach-n8n && sudo docker-compose up -d --build hr-app
-
-# الخطوة 3: مراقبة السجلات
-sudo docker-compose logs -f hr-app
+# الجدول: يومياً 3:00 AM
+# يشمل: n8n_data, wa_postgres_data, wa_tokens, wa_public, docker-compose.yaml, *.md
+# لا يشمل: hr_storage, hr_postgres_data, postgres_data, npm_data, portainer_data
+# يرفع تلقائياً: git push origin master
+# يحذف النسخ القديمة: rm -f proteach_full_backup_*.tar.gz
 ```
 
 ---
 
-## 9. نقاط القوة في البنية الحالية
+## المشاكل المُكتشفة والحلول
 
-- **عزل كامل**: كل نظام له قاعدة بيانات مستقلة
-- **شبكة داخلية موحدة**: جميع الحاويات على `n8n-network` تتواصل بأسماء الحاويات
-- **Hot Reload**: في وضع التطوير، أي تعديل في الكود ينعكس فوراً بدون إعادة بناء
-- **SSL تلقائي**: Nginx Proxy Manager يجدد الشهادات تلقائياً
-- **نسخ احتياطي يومي**: آلي عبر Cron + Git
+### 🔴 المشكلة 1 — مستندات الموظفين الحقيقيين مرفوعة على GitHub
+
+**الوضع الحالي:**
+- `hr_storage/uploads/10000000489_سامر محمد المصري/` مرفوع
+- `hr_storage/uploads/10000000548_خالد زاهر الحداد/` مرفوع
+- `hr_storage/uploads/10000000603_سعيد محمد الزين/` مرفوع
+- `hr_storage/uploads/10000000617_فادي منير النجار/` مرفوع
+- ملفات Excel وWord تحتوي بيانات موظفين — مرفوعة
+
+**الحل الكامل:** (راجع `docs/vps-security-fixes.md`)
+```bash
+git rm -r --cached hr_storage/ n8n_data/
+git rm --cached proteach_full_backup_*.tar.gz
+# ← إضافة للـ .gitignore ← commit ← push
+```
+
+### 🟡 المشكلة 2 — المنفذ 5005 مكشوف خارجياً
+
+**الوضع الحالي:** `wa-dashboard` يكشف المنفذ `5005:5000` مباشرة بدون SSL
+
+**الحل:** إزالة `ports:` من `wa-dashboard` في docker-compose.yaml ثم:
+```bash
+sudo docker-compose up -d --no-deps wa-dashboard
+```
+
+### 🟢 المشكلة 3 — `version: '3.8'` مهملة
+
+**الحل:**
+```bash
+sed -i '/^version:/d' docker-compose.yaml
+```
 
 ---
 
-## 10. نقاط تحتاج انتباهاً
+## الملفات التي تم إنشاؤها/تحديثها
 
-| المشكلة | التوصية |
+| الملف | الوصف |
+|-------|-------|
+| `docs/proteach-n8n-setup-README.md` | ✅ **محدَّث** — README شامل لمستودع proteach-n8n-setup |
+| `docs/proteach-vps-report.md` | ✅ **محدَّث** — هذا التقرير |
+| `docs/vps-security-fixes.md` | ✅ **جديد** — أوامر إصلاح المشاكل الأمنية |
+
+---
+
+## ما يحتاج منك
+
+1. **نسخ `docs/proteach-n8n-setup-README.md`** إلى مستودع `proteach-n8n-setup` باسم `README.md`
+2. **تنفيذ الأوامر في `docs/vps-security-fixes.md`** على السيرفر بالترتيب
+3. **إبلاغك**: هل تريد إضافة `hr_storage/` إلى backup.sh أيضاً؟
+
+---
+
+## توصيات مستقبلية
+
+| التوصية | الأولوية |
 |---------|---------|
-| بيانات الاعتماد مكشوفة في docker-compose.yaml | نقلها لملف `.env` غير مرفوع على GitHub |
-| المنفذ 5005 مكشوف للخارج (wa-dashboard) | إزالته والاعتماد على Nginx بالكامل |
-| وضع التطوير في الإنتاج | مناسب حالياً لكن يجب مراجعته قبل الإطلاق الرسمي |
-| `version: '3.8'` في docker-compose | مهمل في Docker Compose الحديث (تحذير، ليس خطأ) |
+| نقل كلمات مرور قواعد البيانات من docker-compose إلى .env | عالية |
+| تفعيل Fail2Ban لحماية SSH | متوسطة |
+| مراقبة تلقائية لصحة الحاويات (health alerts) | متوسطة |
+| نسخ احتياطي إلى خارج السيرفر (S3/Drive) | منخفضة |
